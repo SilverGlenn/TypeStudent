@@ -1,108 +1,79 @@
-# ⌨️ TypeStudent Pro
+# TypeStudent
 
-> **A modern, offline touch typing tutor and educational arcade built with Rust & GPUI.**  
-> *A spiritual successor to the classic TypingMaster Pro, designed for kids, students, and touch typing enthusiasts.*
+Offline desktop touch typing tutor and educational arcade built with Rust and GPUI.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.80%2B-orange.svg)](https://www.rust-lang.org/)
-[![GPUI](https://img.shields.io/badge/UI-GPUI%200.2.2-blueviolet.svg)](https://github.com/zed-industries/zed)
-[![Offline](https://img.shields.io/badge/Offline-100%25-success.svg)](#)
 
----
+## Features
 
-## 🌟 Highlights
+- **12-Lesson Touch Typing Curriculum**: Progressive exercises covering home row (`ASDF JKL;`), reach keys, uppercase shift coordination, number row, and punctuation.
+- **Typing Guidance Console**: Virtual keyboard paired with animated hand placement guides showing finger lift and home-row anchor positions.
+- **4 Typing Mini-Games**:
+  - `Bubbles`: Pop descending character and word bubbles.
+  - `WordTris`: Clear falling word beams before column stacks overflow.
+  - `Clouds`: Type passing cloud text and press Space to dismiss.
+  - `ABC Sprint`: Alphabet reaction benchmark from A to Z.
+- **Trophy System**: 12 milestone badges tracking speed thresholds, accuracy streaks, and lesson completion.
+- **Story Studio**: Reading passages for sentence-level typing practice.
+- **Timed Tests and Printable Diplomas**: 1 to 5 minute standardized typing tests with one-click HTML certificate export.
+- **Weak Key Diagnostics**: Per-key accuracy heatmap and automatic remedial drill generation.
+- **Multi-User Profiles**: Local profile storage (`profiles_data.json`) for multiple student accounts.
+- **Offline Procedural Audio**: Synthesized keystroke clicks and audio feedback via `rodio` with zero external audio assets.
 
-- 🎓 **12-Lesson Progressive Touch Typing Course**: Comprehensive curriculum starting from Home Row (`ASDF JKL;`) through reaching keys, `Shift` capital coordination, and numbers/symbols.
-- 🖐️ **Visual Hands & Keyboard Guide**: Dynamic color-coded 5-finger zones (Pinky, Ring, Middle, Index, Thumb) and live hand indicator highlighting the exact finger for every keystroke.
-- 🎮 **The 4 Classic TypingMaster Games**:
-  - 🫧 **Bubbles**: Descending letter bubbles with combos and multipliers over an ocean backdrop.
-  - 🧱 **WordTris**: Falling word beams stacking up in columns before reaching the danger ceiling.
-  - ☁️ **Clouds**: Words drifting across a sunny sky—type and press `Space` to blow them away!
-  - ⚡ **ABC Sprint**: A lightning-fast alphabet sprint testing reaction times from `A` to `Z`.
-- 🏆 **Trophy Room & Achievement Badges**: 12 unlockable retro badges for speed milestones, accuracy streaks, game high scores, and course completion.
-- 📖 **Story Studio**: Kid-friendly reading and typing stories featuring dragons, space rovers, treehouse adventures, and dinosaur typists.
-- ⏱️ **Timed Tests & Printable Diplomas**: Standardized 1–5 minute tests generating official gold-bordered Certificates of Achievement exportable to clean HTML for home printing.
-- 🎯 **Smart Review & Weak Key Heatmap**: Automatically analyzes per-key error rates and latency to generate targeted remedial drills.
-- 👥 **Multi-Student Profiles**: Multiple children, siblings, or students can practice on the same computer with independent progress, stars, and diplomas saved locally in `profiles_data.json`.
-- 🔊 **Procedural Waveform Audio**: Real-time synthesized mechanical keyclicks, error thuds, and victory fanfares with zero external audio assets required.
-- 🔌 **100% Offline**: Requires zero internet connection, zero tracking, and zero ads.
-
----
-
-## 📸 Overview & Design
-
-TypeStudent Pro uses a clean, soothing **Light Theme** engineered specifically to prevent eye fatigue for children, using neutral slates, crisp whites, and gentle pastel finger zone highlights.
-
-```
-+-------------------------------------------------------------------------------+
-|  TypeStudent Pro                                            Offline Mode 🔌   |
-+-------------------------------------------------------------------------------+
-| [📚 Lessons]       |  Lesson 1: Home Row (A S D F  J K L ;)                   |
-| [🎯 Smart Review]  |  +----------------------------------------------------+  |
-| [📖 Story Studio]  |  |  a s d f   j k l ;   a s d f   j k l ;   f j d k   |  |
-| [🏆 Trophy Room]   |  +----------------------------------------------------+  |
-| [⏱️ Typing Tests]  |                                                          |
-| [🎮 Mini Games]    |         [ Q ][ W ][ E ][ R ][ T ][ Y ][ U ][ I ][ O ][ P ]|
-| [📊 Heatmap Stats] |       [ A ][ S ][ D ][ F ][ G ][ H ][ J ][ K ][ L ][ ; ]  |
-| [👥 Profiles]      |         [ Z ][ X ][ C ][ V ][ B ][ N ][ M ][ , ][ . ][ / ]|
-| [⚙️ Settings]      |                     [      SPACE      ]                  |
-|                    |             ( Left Hand )         ( Right Hand )         |
-+-------------------------------------------------------------------------------+
-```
-
----
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-Make sure you have **Rust & Cargo** installed:
-```bash
-# Verify Rust installation
-cargo --version
-```
+- Rust 1.80 or newer with Cargo
 
-### Installation & Run
+### Build and Run
 
-1. Clone the repository:
 ```bash
+# Clone the repository
 git clone https://github.com/SilverGlenn/TypeStudent.git
 cd TypeStudent
-```
 
-2. Run the application:
-```bash
+# Run development build
+cargo run
+
+# Run release build
 cargo run --release
-```
 
-3. Run the automated test suite:
-```bash
+# Run unit tests
 cargo test
 ```
 
----
+## Project Structure
 
-## 🏗️ Architecture
+```
+src/
+├── app.rs                  # Primary GPUI view and UI layout
+├── audio.rs                # Procedural sound synthesis (rodio)
+├── main.rs                 # Application entry point and window setup
+├── profile.rs              # Profile store and weak key analysis
+├── state.rs                # Application state machine
+├── trophies.rs             # Achievement criteria and unlock registry
+├── components/
+│   ├── gauge.rs            # Speedometer and accuracy gauge components
+│   ├── hands.rs            # Hand geometry and finger guide states
+│   └── keyboard.rs         # Layout definitions and finger zone mapping
+├── course/
+│   └── data.rs             # 12-lesson curriculum definitions
+├── engine/
+│   └── typing_session.rs   # Keystroke engine, WPM calculation, and accuracy tracking
+└── views/
+    ├── diploma_export.rs   # HTML certificate generator
+    ├── games_view.rs       # Mini-games launcher
+    ├── sidebar.rs          # Navigation sidebar definition
+    ├── stories_data.rs     # Reading practice passages
+    └── games/
+        ├── abc.rs          # Alphabet sprint game
+        ├── bubbles.rs      # Bubbles game
+        ├── clouds.rs       # Clouds game
+        └── wordtris.rs     # WordTris falling block game
+```
 
-- **`src/app.rs`**: Core GPUI application view, state coordinator, light theme styling, and view routing.
-- **`src/engine/`**: Keystroke engine, gross/net WPM calculations, latency tracking, and session state machine.
-- **`src/components/`**: Interactive visual keyboard (`keyboard.rs`), active hands diagram (`hands.rs`), and HUD speedometer (`gauge.rs`).
-- **`src/course/`**: 12 touch typing lessons, key introductions, word drills, and exams (`data.rs`).
-- **`src/views/games/`**: The 4 classic games: `bubbles.rs`, `wordtris.rs`, `clouds.rs`, and `abc.rs`.
-- **`src/trophies.rs`**: Achievement badges and trophy milestone tracking.
-- **`src/views/stories_data.rs`**: Creative reading passages for kids.
-- **`src/views/diploma_export.rs`**: HTML diploma certificate exporter.
-- **`src/profile.rs`**: Multi-student JSON persistence and weak key heatmap extractor.
-- **`src/audio.rs`**: Offline procedural audio synthesizer powered by `rodio`.
+## License
 
----
-
-## 📜 License
-
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-
----
-
-## ❤️ Acknowledgements
-
-Inspired by the cherished elementary school memories of **TypingMaster Pro**. Built with love to help the next generation master the keyboard with confidence and joy!
+MIT License. See [LICENSE](LICENSE) for details.
