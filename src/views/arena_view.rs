@@ -23,7 +23,6 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
     let net_wpm = session.net_wpm();
     let accuracy = session.accuracy_percent();
     let errors = session.error_keystrokes;
-    let progress = session.progress_ratio() * 100.0;
     let active_char = session.current_char();
     let active_finger = view.state.active_finger();
     let hands_model = HandsGuideModel::for_active_target(active_finger, active_char);
@@ -98,21 +97,6 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
                                 )
                                 .child("✕ Exit"),
                         ),
-                ),
-        )
-        // Subtle Progress Bar
-        .child(
-            div()
-                .w_full()
-                .h(px(4.0))
-                .rounded_full()
-                .bg(rgb(0xe2e8f0))
-                .child(
-                    div()
-                        .h_full()
-                        .rounded_full()
-                        .bg(rgb(0x0284c7))
-                        .w(px((progress * 9.0).max(4.0))),
                 ),
         )
         // Spacious, large-font typing text box
