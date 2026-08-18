@@ -219,7 +219,7 @@ impl TtsWorker {
                                         if let Ok(mut sink_guard) = speech_sink_clone.lock() {
                                             if let Some(sink) = sink_guard.as_mut() {
                                                 if interrupt {
-                                                    sink.stop();
+                                                    sink.clear();
                                                 }
                                                 let source = rodio::buffer::SamplesBuffer::new(1, 22050, samples);
                                                 sink.set_volume(0.95);
@@ -299,7 +299,7 @@ impl TtsWorker {
             if let Ok(mut sink_guard) = self.speech_sink.lock() {
                 if let Some(sink) = sink_guard.as_mut() {
                     if interrupt {
-                        sink.stop();
+                        sink.clear();
                     }
                     let source = rodio::buffer::SamplesBuffer::new(1, 22050, samples);
                     sink.set_volume(0.95);
