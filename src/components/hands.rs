@@ -26,102 +26,52 @@ pub struct HandsGuideModel {
     pub right_pinky: HandFingerState,
 }
 
+const BASE_LEFT_PINKY: HandFingerState = HandFingerState { finger: Finger::LeftPinky, is_active: false, label: "Pinky", home_key: "A", normal_height: 55.0, active_height: 72.0, width: 34.0 };
+const BASE_LEFT_RING: HandFingerState = HandFingerState { finger: Finger::LeftRing, is_active: false, label: "Ring", home_key: "S", normal_height: 75.0, active_height: 92.0, width: 34.0 };
+const BASE_LEFT_MIDDLE: HandFingerState = HandFingerState { finger: Finger::LeftMiddle, is_active: false, label: "Middle", home_key: "D", normal_height: 90.0, active_height: 108.0, width: 36.0 };
+const BASE_LEFT_INDEX: HandFingerState = HandFingerState { finger: Finger::LeftIndex, is_active: false, label: "Index", home_key: "F", normal_height: 80.0, active_height: 98.0, width: 36.0 };
+const BASE_LEFT_THUMB: HandFingerState = HandFingerState { finger: Finger::Thumb, is_active: false, label: "Thumb", home_key: "Space", normal_height: 50.0, active_height: 68.0, width: 40.0 };
+const BASE_RIGHT_THUMB: HandFingerState = HandFingerState { finger: Finger::Thumb, is_active: false, label: "Thumb", home_key: "Space", normal_height: 50.0, active_height: 68.0, width: 40.0 };
+const BASE_RIGHT_INDEX: HandFingerState = HandFingerState { finger: Finger::RightIndex, is_active: false, label: "Index", home_key: "J", normal_height: 80.0, active_height: 98.0, width: 36.0 };
+const BASE_RIGHT_MIDDLE: HandFingerState = HandFingerState { finger: Finger::RightMiddle, is_active: false, label: "Middle", home_key: "K", normal_height: 90.0, active_height: 108.0, width: 36.0 };
+const BASE_RIGHT_RING: HandFingerState = HandFingerState { finger: Finger::RightRing, is_active: false, label: "Ring", home_key: "L", normal_height: 75.0, active_height: 92.0, width: 34.0 };
+const BASE_RIGHT_PINKY: HandFingerState = HandFingerState { finger: Finger::RightPinky, is_active: false, label: "Pinky", home_key: ";", normal_height: 55.0, active_height: 72.0, width: 34.0 };
+
 impl HandsGuideModel {
     pub fn for_active_target(active: Option<Finger>, target_char: Option<char>) -> Self {
-        Self {
+        let mut model = Self {
             active_finger: active,
             target_char,
-            left_pinky: HandFingerState {
-                finger: Finger::LeftPinky,
-                is_active: active == Some(Finger::LeftPinky),
-                label: "Pinky",
-                home_key: "A",
-                normal_height: 55.0,
-                active_height: 72.0,
-                width: 34.0,
-            },
-            left_ring: HandFingerState {
-                finger: Finger::LeftRing,
-                is_active: active == Some(Finger::LeftRing),
-                label: "Ring",
-                home_key: "S",
-                normal_height: 75.0,
-                active_height: 92.0,
-                width: 34.0,
-            },
-            left_middle: HandFingerState {
-                finger: Finger::LeftMiddle,
-                is_active: active == Some(Finger::LeftMiddle),
-                label: "Middle",
-                home_key: "D",
-                normal_height: 90.0,
-                active_height: 108.0,
-                width: 36.0,
-            },
-            left_index: HandFingerState {
-                finger: Finger::LeftIndex,
-                is_active: active == Some(Finger::LeftIndex),
-                label: "Index",
-                home_key: "F",
-                normal_height: 80.0,
-                active_height: 98.0,
-                width: 36.0,
-            },
-            left_thumb: HandFingerState {
-                finger: Finger::Thumb,
-                is_active: active == Some(Finger::Thumb),
-                label: "Thumb",
-                home_key: "Space",
-                normal_height: 50.0,
-                active_height: 68.0,
-                width: 40.0,
-            },
-            right_thumb: HandFingerState {
-                finger: Finger::Thumb,
-                is_active: active == Some(Finger::Thumb),
-                label: "Thumb",
-                home_key: "Space",
-                normal_height: 50.0,
-                active_height: 68.0,
-                width: 40.0,
-            },
-            right_index: HandFingerState {
-                finger: Finger::RightIndex,
-                is_active: active == Some(Finger::RightIndex),
-                label: "Index",
-                home_key: "J",
-                normal_height: 80.0,
-                active_height: 98.0,
-                width: 36.0,
-            },
-            right_middle: HandFingerState {
-                finger: Finger::RightMiddle,
-                is_active: active == Some(Finger::RightMiddle),
-                label: "Middle",
-                home_key: "K",
-                normal_height: 90.0,
-                active_height: 108.0,
-                width: 36.0,
-            },
-            right_ring: HandFingerState {
-                finger: Finger::RightRing,
-                is_active: active == Some(Finger::RightRing),
-                label: "Ring",
-                home_key: "L",
-                normal_height: 75.0,
-                active_height: 92.0,
-                width: 34.0,
-            },
-            right_pinky: HandFingerState {
-                finger: Finger::RightPinky,
-                is_active: active == Some(Finger::RightPinky),
-                label: "Pinky",
-                home_key: ";",
-                normal_height: 55.0,
-                active_height: 72.0,
-                width: 34.0,
-            },
+            left_pinky: BASE_LEFT_PINKY,
+            left_ring: BASE_LEFT_RING,
+            left_middle: BASE_LEFT_MIDDLE,
+            left_index: BASE_LEFT_INDEX,
+            left_thumb: BASE_LEFT_THUMB,
+            right_thumb: BASE_RIGHT_THUMB,
+            right_index: BASE_RIGHT_INDEX,
+            right_middle: BASE_RIGHT_MIDDLE,
+            right_ring: BASE_RIGHT_RING,
+            right_pinky: BASE_RIGHT_PINKY,
+        };
+
+        if let Some(finger) = active {
+            match finger {
+                Finger::LeftPinky => model.left_pinky.is_active = true,
+                Finger::LeftRing => model.left_ring.is_active = true,
+                Finger::LeftMiddle => model.left_middle.is_active = true,
+                Finger::LeftIndex => model.left_index.is_active = true,
+                Finger::Thumb => {
+                    model.left_thumb.is_active = true;
+                    model.right_thumb.is_active = true;
+                }
+                Finger::RightIndex => model.right_index.is_active = true,
+                Finger::RightMiddle => model.right_middle.is_active = true,
+                Finger::RightRing => model.right_ring.is_active = true,
+                Finger::RightPinky => model.right_pinky.is_active = true,
+            }
         }
+
+        model
     }
 
     pub fn active_finger_instruction(&self) -> String {

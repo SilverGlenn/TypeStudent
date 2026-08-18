@@ -269,14 +269,11 @@ impl TtsWorker {
         let (lock, cvar) = &*self.precache_queue;
         let mut queue = lock.lock().unwrap();
         let mut new_queue = VecDeque::new();
-        for w in words {
-            let key = w.trim().to_lowercase();
-            if !key.is_empty() {
-                let already_cached = {
-                    let cache = self.sample_cache.lock().unwrap();
-                    cache.contains_key(&key)
-                };
-                if !already_cached && !new_queue.contains(&w) {
+        {
+            let cache = self.sample_cache.lock().unwrap();
+            for w in words {
+                let key = w.trim().to_lowercase();
+                if !key.is_empty() && !cache.contains_key(&key) && !new_queue.contains(&w) {
                     new_queue.push_back(w);
                 }
             }

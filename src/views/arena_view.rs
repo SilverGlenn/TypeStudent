@@ -142,7 +142,6 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
                     let status = session.char_statuses[idx];
                     let is_cursor = idx == session.cursor_idx;
                     let is_space = ch == ' ';
-                    let display_char = if is_space { "␣" } else { &ch.to_string() };
 
                     let (text_color, bg_color) = match status {
                         CharStatus::Correct => {
@@ -164,15 +163,20 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
                         }
                     };
 
-                    div()
+                    let el = div()
                         .px_1p5()
                         .py_0p5()
                         .rounded_md()
                         .bg(bg_color)
                         .text_color(text_color)
                         .border_b_2()
-                        .border_color(if is_cursor { rgb(0x0369a1) } else { rgb(0xffffff) })
-                        .child(display_char.to_string())
+                        .border_color(if is_cursor { rgb(0x0369a1) } else { rgb(0xffffff) });
+
+                    if is_space {
+                        el.child("␣")
+                    } else {
+                        el.child(ch.to_string())
+                    }
                 })),
         )
         // Friendly Keyboard & Hands Console (Ages 3-16)
@@ -442,12 +446,12 @@ fn render_friendly_keyboard(active_char: Option<char>, _active_finger: Option<Fi
         .flex()
         .flex_col()
         .gap_1p5()
-        .children(layout.into_iter().map(|row| {
+        .children(layout.iter().map(|&row| {
             div()
                 .flex()
                 .gap_1p5()
                 .justify_center()
-                .children(row.into_iter().map(|key| {
+                .children(row.iter().map(|key| {
                     let is_active = target_lower.map_or(false, |t| {
                         key.char_val == t || (t == ' ' && key.char_val == ' ')
                     });
