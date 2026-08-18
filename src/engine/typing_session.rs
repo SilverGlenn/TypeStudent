@@ -105,9 +105,18 @@ impl TypingSession {
         if is_correct {
             self.correct_keystrokes += 1;
             self.char_statuses[self.cursor_idx] = CharStatus::Correct;
+            self.cursor_idx += 1;
+
+            if self.cursor_idx >= self.target_chars.len() {
+                self.finish(now);
+            }
         } else {
             self.error_keystrokes += 1;
             self.char_statuses[self.cursor_idx] = CharStatus::Incorrect(input);
+            // Do not advance past the end of text on mistake, so user must type the correct final character to finish
+            if self.cursor_idx + 1 < self.target_chars.len() {
+                self.cursor_idx += 1;
+            }
         }
 
         self.key_timings.push(KeyTiming {
@@ -117,13 +126,41 @@ impl TypingSession {
             latency_ms,
         });
 
-        self.cursor_idx += 1;
+        is_correct
+    }
 
-        if self.cursor_idx >= self.target_chars.len() {
-            self.finish(now);
+    /// If the keystroke that was just processed completed a word boundary (e.g., Space or end of text),
+    /// returns the word that was completed.
+    pub fn completed_word_at_current_cursor(&self) -> Option<String> {
+        if self.cursor_idx == 0 || self.target_chars.is_empty() {
+            return None;
         }
 
-        is_correct
+        let just_typed_idx = self.cursor_idx - 1;
+        let is_at_end = self.cursor_idx == self.target_chars.len();
+        let is_space = self.target_chars[just_typed_idx] == ' ';
+
+        if is_space || is_at_end {
+            let end_idx = if is_space {
+                just_typed_idx
+            } else {
+                self.target_chars.len()
+            };
+
+            let mut start_idx = end_idx;
+            while start_idx > 0 && self.target_chars[start_idx - 1] != ' ' {
+                start_idx -= 1;
+            }
+
+            if start_idx < end_idx {
+                let word: String = self.target_chars[start_idx..end_idx].iter().collect();
+                let trimmed = word.trim_matches(|c: char| !c.is_alphanumeric()).to_string();
+                if !trimmed.is_empty() {
+                    return Some(trimmed);
+                }
+            }
+        }
+        None
     }
 
     pub fn handle_backspace(&mut self) -> bool {

@@ -19,7 +19,7 @@ Offline desktop touch typing tutor and educational arcade built with Rust and GP
 - **Timed Tests and Printable Diplomas**: 1 to 5 minute standardized typing tests with one-click HTML certificate export.
 - **Weak Key Diagnostics**: Per-key accuracy heatmap and automatic remedial drill generation.
 - **Multi-User Profiles**: Local profile storage (`profiles_data.json`) for multiple student accounts.
-- **Offline Procedural Audio**: Synthesized keystroke clicks and audio feedback via `rodio` with zero external audio assets.
+- **Offline Procedural Audio & Neural Speech**: Real-time keystroke audio feedback with procedural sound generation via `rodio` and low-latency offline neural speech synthesis (*Piper* with in-memory sample caching). Pronounces individual letters during beginner drills and reads completed words in real-time. See [AUDIO_AND_TTS.md](AUDIO_AND_TTS.md) for architecture details.
 
 ## Getting Started
 

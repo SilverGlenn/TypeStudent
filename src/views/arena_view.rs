@@ -72,6 +72,31 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
                             if errors > 0 { rgb(0xfef2f2) } else { rgb(0xf8fafc) },
                             if errors > 0 { rgb(0xfecaca) } else { rgb(0xe2e8f0) },
                         ))
+                        // Voice Guidance Toggle button
+                        .child({
+                            let voice_on = view.state.audio.is_voice_enabled();
+                            div()
+                                .id("btn_toggle_voice")
+                                .px_2p5()
+                                .py_1p5()
+                                .rounded_lg()
+                                .bg(if voice_on { rgb(0xf0fdf4) } else { rgb(0xf8fafc) })
+                                .border_1()
+                                .border_color(if voice_on { rgb(0x86efac) } else { rgb(0xcbd5e1) })
+                                .text_size(px(11.0))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(if voice_on { rgb(0x15803d) } else { rgb(0x64748b) })
+                                .cursor_pointer()
+                                .hover(|s| s.bg(rgb(0xe2e8f0)))
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                        this.state.audio.toggle_voice();
+                                        cx.notify();
+                                    }),
+                                )
+                                .child(if voice_on { "🔊 Voice ON" } else { "🔈 Voice OFF" })
+                        })
                         // Quick Exit button
                         .child(
                             div()

@@ -1,6 +1,6 @@
 use crate::audio::{SharedAudio, SoundEffect};
 use crate::components::keyboard::Finger;
-use crate::course::{get_all_lessons, Exercise, Lesson};
+use crate::course::{get_all_lessons, Exercise, ExerciseType, Lesson};
 use crate::engine::TypingSession;
 use crate::profile::{ProfileStore, TestRecord};
 use crate::views::games::{AbcGame, BubblesGame, CloudsGame, WordTrisGame};
@@ -155,6 +155,7 @@ impl AppState {
             let ex = self.lessons[lesson_idx].exercises[exercise_idx].clone();
             self.typing_session = Some(TypingSession::new(&ex.text));
             self.init_pre_activity_keys(&ex.new_keys, &ex.text);
+            self.audio.precache_text(&ex.text);
             self.current_exercise_info = Some(ex);
             self.active_view = ActiveView::TypingArena;
             self.is_sidebar_open = false;
@@ -166,6 +167,7 @@ impl AppState {
         let session = TypingSession::with_time_limit(text, Duration::from_secs(duration_secs as u64));
         self.typing_session = Some(session);
         self.init_pre_activity_keys(&[], text);
+        self.audio.precache_text(text);
         self.current_exercise_info = Some(Exercise {
             id: "test".to_string(),
             title: title.to_string(),
@@ -182,6 +184,7 @@ impl AppState {
     pub fn start_smart_review(&mut self, drill_text: &str) {
         self.typing_session = Some(TypingSession::new(drill_text));
         self.init_pre_activity_keys(&[], drill_text);
+        self.audio.precache_text(drill_text);
         self.current_exercise_info = Some(Exercise {
             id: "smart_review".to_string(),
             title: "Smart Review Drill".to_string(),
@@ -198,6 +201,7 @@ impl AppState {
     pub fn start_story_practice(&mut self, title: &str, story_text: &str) {
         self.typing_session = Some(TypingSession::new(story_text));
         self.init_pre_activity_keys(&[], story_text);
+        self.audio.precache_text(story_text);
         self.current_exercise_info = Some(Exercise {
             id: "story_practice".to_string(),
             title: title.to_string(),
@@ -246,12 +250,21 @@ impl AppState {
                     return;
                 }
 
+                let is_letter_drill = self.current_exercise_info.as_ref().map_or(false, |info| {
+                    matches!(info.exercise_type, ExerciseType::KeyIntro | ExerciseType::KeyDrill)
+                });
+
                 if let Some(session) = &mut self.typing_session {
                     let is_correct = session.handle_char_input(c);
                     let latency = session.key_timings.last().map(|k| k.latency_ms).unwrap_or(0);
                     
                     if is_correct {
                         self.audio.play(SoundEffect::KeyClick);
+                        if is_letter_drill {
+                            self.audio.speak_letter(c);
+                        } else if let Some(word) = session.completed_word_at_current_cursor() {
+                            self.audio.speak_word(&word);
+                        }
                     } else {
                         self.audio.play(SoundEffect::KeyError);
                     }
@@ -299,6 +312,7 @@ impl AppState {
                     self.audio.play(SoundEffect::ExerciseSuccess);
                 } else if correct {
                     self.audio.play(SoundEffect::KeyClick);
+                    self.audio.speak_letter(c);
                 } else {
                     self.audio.play(SoundEffect::KeyError);
                 }
@@ -455,6 +469,7 @@ impl AppState {
     pub fn restart_current_exercise(&mut self) {
         if let Some(session) = &mut self.typing_session {
             session.reset();
+            self.audio.precache_text(&session.target_text);
             self.active_view = ActiveView::TypingArena;
         }
     }
