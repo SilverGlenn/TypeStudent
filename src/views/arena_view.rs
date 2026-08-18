@@ -116,14 +116,23 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
                 .children(session.target_chars.iter().enumerate().map(|(idx, &ch)| {
                     let status = session.char_statuses[idx];
                     let is_cursor = idx == session.cursor_idx;
-                    let display_char = if ch == ' ' { "␣" } else { &ch.to_string() };
+                    let is_space = ch == ' ';
+                    let display_char = if is_space { "␣" } else { &ch.to_string() };
 
                     let (text_color, bg_color) = match status {
-                        CharStatus::Correct => (rgb(0x15803d), rgb(0xdcfce7)),
+                        CharStatus::Correct => {
+                            if is_space {
+                                (rgb(0x86efac), rgb(0xf0fdf4))
+                            } else {
+                                (rgb(0x15803d), rgb(0xdcfce7))
+                            }
+                        }
                         CharStatus::Incorrect(_) => (rgb(0xb91c1c), rgb(0xfee2e2)),
                         CharStatus::Pending => {
                             if is_cursor {
                                 (rgb(0xffffff), rgb(0x0284c7))
+                            } else if is_space {
+                                (rgb(0xcbd5e1), rgb(0xffffff)) // Faint, subtle space marker
                             } else {
                                 (rgb(0x334155), rgb(0xffffff))
                             }
