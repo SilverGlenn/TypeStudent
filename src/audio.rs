@@ -157,9 +157,10 @@ impl TtsWorker {
                 .ok()?;
         }
 
-        // 2. Playback & Instant Fallback Speech Worker Thread
+        // 2. Playback & Fallback Speech Worker Thread
         {
             let sample_cache = Arc::clone(&sample_cache);
+            let piper_opt = Arc::clone(&piper_opt);
             let speech_sink_clone = Arc::clone(&speech_sink);
 
             thread::Builder::new()
@@ -197,13 +198,25 @@ impl TtsWorker {
                         match task {
                             SpeechTask::Speak { text, interrupt } => {
                                 let key = text.trim().to_lowercase();
-                                // 1. Check if neural sample was pre-cached in memory
-                                let cached_opt = {
+                                // 1. Check RAM sample cache or synthesize with Piper in background
+                                let samples_opt = {
                                     let cache = sample_cache.lock().unwrap();
                                     cache.get(&key).cloned()
-                                };
+                                }.or_else(|| {
+                                    if let Some(piper) = piper_opt.as_ref() {
+                                        if let Some(fresh) = piper.synthesize_raw(&text) {
+                                            let mut cache = sample_cache.lock().unwrap();
+                                            cache.insert(key, fresh.clone());
+                                            Some(fresh)
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                });
 
-                                if let Some(samples) = cached_opt {
+                                if let Some(samples) = samples_opt {
                                     if let Ok(mut sink_guard) = speech_sink_clone.lock() {
                                         if let Some(sink) = sink_guard.as_mut() {
                                             if interrupt {
@@ -215,7 +228,6 @@ impl TtsWorker {
                                         }
                                     }
                                 } else if let Some(tts_engine) = &mut os_tts {
-                                    // 2. Real-time in-process OS TTS fallback (0ms latency, zero process spawn!)
                                     let _ = tts_engine.speak(&text, interrupt);
                                 }
                             }
@@ -542,14 +554,11 @@ impl AudioEngine {
             return;
         }
         let mut words: Vec<String> = Vec::new();
-        // 1. Process first 25 words in exact order of appearance to avoid overloading the CPU
+        // 1. Process all words in exact order of appearance in background
         for word in text.split_whitespace() {
             let clean = word.trim_matches(|c: char| !c.is_alphanumeric());
             if !clean.is_empty() && !words.contains(&clean.to_string()) {
                 words.push(clean.to_string());
-                if words.len() >= 25 {
-                    break;
-                }
             }
         }
         // 2. Also register individual letters in order of appearance
