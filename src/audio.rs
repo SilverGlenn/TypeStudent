@@ -106,7 +106,6 @@ struct TtsWorker {
     task_sender: Sender<SpeechTask>,
     precache_queue: Arc<(Mutex<VecDeque<String>>, Condvar)>,
     sample_cache: Arc<Mutex<HashMap<String, Vec<f32>>>>,
-    speech_sink: Arc<Mutex<Option<Sink>>>,
 }
 
 impl TtsWorker {
@@ -158,19 +157,18 @@ impl TtsWorker {
                 .ok()?;
         }
 
-        // 2. Playback / Fallback Speech Worker Thread
+        // 2. Playback & Instant Fallback Speech Worker Thread
         {
             let sample_cache = Arc::clone(&sample_cache);
-            let piper_opt = Arc::clone(&piper_opt);
             let speech_sink_clone = Arc::clone(&speech_sink);
 
             thread::Builder::new()
                 .name("type-student-speech".into())
                 .spawn(move || {
-                    let mut os_tts_opt = if piper_opt.is_none() {
+                    let mut os_tts = {
                         let mut t = tts::Tts::default().ok();
                         if let Some(tts_engine) = &mut t {
-                            let _ = tts_engine.set_rate(0.92);
+                            let _ = tts_engine.set_rate(0.95);
                             if let Ok(voices) = tts_engine.voices() {
                                 let preferred_voice = voices.iter().find(|v| {
                                     let name = v.name().to_lowercase();
@@ -193,51 +191,41 @@ impl TtsWorker {
                             }
                         }
                         t
-                    } else {
-                        None
                     };
 
                     while let Ok(task) = task_receiver.recv() {
                         match task {
                             SpeechTask::Speak { text, interrupt } => {
                                 let key = text.trim().to_lowercase();
-                                if let Some(piper) = piper_opt.as_ref() {
-                                    let samples_opt = {
-                                        let cache = sample_cache.lock().unwrap();
-                                        cache.get(&key).cloned()
-                                    }.or_else(|| {
-                                        if let Some(fresh) = piper.synthesize_raw(&text) {
-                                            let mut cache = sample_cache.lock().unwrap();
-                                            cache.insert(key, fresh.clone());
-                                            Some(fresh)
-                                        } else {
-                                            None
-                                        }
-                                    });
+                                // 1. Check if neural sample was pre-cached in memory
+                                let cached_opt = {
+                                    let cache = sample_cache.lock().unwrap();
+                                    cache.get(&key).cloned()
+                                };
 
-                                    if let Some(samples) = samples_opt {
-                                        if let Ok(mut sink_guard) = speech_sink_clone.lock() {
-                                            if let Some(sink) = sink_guard.as_mut() {
-                                                if interrupt {
-                                                    sink.clear();
-                                                }
-                                                let source = rodio::buffer::SamplesBuffer::new(1, 22050, samples);
-                                                sink.set_volume(0.95);
-                                                sink.append(source);
+                                if let Some(samples) = cached_opt {
+                                    if let Ok(mut sink_guard) = speech_sink_clone.lock() {
+                                        if let Some(sink) = sink_guard.as_mut() {
+                                            if interrupt {
+                                                sink.clear();
                                             }
+                                            let source = rodio::buffer::SamplesBuffer::new(1, 22050, samples);
+                                            sink.set_volume(0.95);
+                                            sink.append(source);
                                         }
                                     }
-                                } else if let Some(tts_engine) = &mut os_tts_opt {
+                                } else if let Some(tts_engine) = &mut os_tts {
+                                    // 2. Real-time in-process OS TTS fallback (0ms latency, zero process spawn!)
                                     let _ = tts_engine.speak(&text, interrupt);
                                 }
                             }
                             SpeechTask::Stop => {
                                 if let Ok(mut sink_guard) = speech_sink_clone.lock() {
                                     if let Some(sink) = sink_guard.as_mut() {
-                                        sink.stop();
+                                        sink.clear();
                                     }
                                 }
-                                if let Some(tts_engine) = &mut os_tts_opt {
+                                if let Some(tts_engine) = &mut os_tts {
                                     let _ = tts_engine.stop();
                                 }
                             }
@@ -251,7 +239,6 @@ impl TtsWorker {
             task_sender,
             precache_queue,
             sample_cache,
-            speech_sink,
         };
 
         // Pre-cache primary alphabet letters in background
@@ -289,27 +276,7 @@ impl TtsWorker {
     }
 
     fn speak(&self, text: String, interrupt: bool) {
-        let key = text.trim().to_lowercase();
-        let cached_sample = {
-            let cache = self.sample_cache.lock().unwrap();
-            cache.get(&key).cloned()
-        };
-
-        if let Some(samples) = cached_sample {
-            if let Ok(mut sink_guard) = self.speech_sink.lock() {
-                if let Some(sink) = sink_guard.as_mut() {
-                    if interrupt {
-                        sink.clear();
-                    }
-                    let source = rodio::buffer::SamplesBuffer::new(1, 22050, samples);
-                    sink.set_volume(0.95);
-                    sink.append(source);
-                    return;
-                }
-            }
-        }
-
-        // Slow path / cache miss: dispatch to background task worker
+        // Asynchronously dispatch all speech to worker thread — zero main-thread blocking
         let _ = self.task_sender.send(SpeechTask::Speak { text, interrupt });
     }
 
@@ -531,7 +498,7 @@ impl AudioEngine {
             return;
         }
 
-        if let Ok(mut sink_guard) = self.sfx_sink.lock() {
+        if let Ok(mut sink_guard) = self.sfx_sink.try_lock() {
             if let Some(sink) = sink_guard.as_mut() {
                 if let Some(samples) = self.generator.get_samples(effect) {
                     let source = rodio::buffer::SamplesBuffer::new(1, self.generator.sample_rate, samples.clone());
