@@ -2,9 +2,10 @@ use crate::app::TypeStudentView;
 use crate::components::hands::{HandFingerState, HandsGuideModel};
 use crate::components::keyboard::{get_keyboard_layout, Finger};
 use crate::engine::CharStatus;
+use crate::state::ActiveView;
 use gpui::*;
 
-pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudentView>) -> AnyElement {
+pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentView>) -> AnyElement {
     let session = match &view.state.typing_session {
         Some(s) => s,
         None => return div().child("No active session").into_any_element(),
@@ -12,7 +13,14 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
     let info = view.state.current_exercise_info.as_ref();
     let title = info.map(|i| i.title.clone()).unwrap_or_else(|| "Exercise".to_string());
     let instruction = info.map(|i| i.instruction.clone()).unwrap_or_default();
+    let new_keys = info.map(|i| i.new_keys.clone()).unwrap_or_default();
 
+    // 1. Pre-Activity Intro Card (Clean & uncluttered before typing starts)
+    if view.state.is_pre_activity {
+        return render_pre_activity_screen(&title, &instruction, &new_keys, cx);
+    }
+
+    // 2. Live Typing Screen (Minimal HUD, No cluttered banners, spacious)
     let net_wpm = session.net_wpm();
     let accuracy = session.accuracy_percent();
     let errors = session.error_keystrokes;
@@ -24,15 +32,16 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
     div()
         .flex()
         .flex_col()
-        .gap_3p5()
+        .gap_4()
+        .size_full()
+        // Top Minimal Live HUD & Quick Exit
         .child(
-            // Header & HUD Metrics
             div()
                 .flex()
                 .justify_between()
                 .items_center()
                 .px_4()
-                .py_3()
+                .py_2p5()
                 .rounded_xl()
                 .bg(rgb(0xffffff))
                 .border_1()
@@ -40,28 +49,23 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
                 .child(
                     div()
                         .flex()
-                        .flex_col()
-                        .gap_0p5()
+                        .items_center()
+                        .gap_3()
                         .child(
                             div()
-                                .text_size(px(16.0))
+                                .text_size(px(15.0))
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(rgb(0x0f172a))
                                 .child(title),
-                        )
-                        .child(
-                            div()
-                                .text_size(px(11.0))
-                                .text_color(rgb(0x64748b))
-                                .child(instruction),
                         ),
                 )
+                // 3 Live Indicators only: WPM, Accuracy, Errors
                 .child(
                     div()
                         .flex()
                         .items_center()
                         .gap_3()
-                        .child(metric_pill("NET WPM", format!("{:.0}", net_wpm), rgb(0x15803d), rgb(0xf0fdf4), rgb(0xbbf7d0)))
+                        .child(metric_pill("WPM", format!("{:.0}", net_wpm), rgb(0x15803d), rgb(0xf0fdf4), rgb(0xbbf7d0)))
                         .child(metric_pill("ACCURACY", format!("{:.0}%", accuracy), rgb(0x0369a1), rgb(0xf0f9ff), rgb(0xbae6fd)))
                         .child(metric_pill(
                             "ERRORS",
@@ -69,10 +73,35 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
                             if errors > 0 { rgb(0xdc2626) } else { rgb(0x64748b) },
                             if errors > 0 { rgb(0xfef2f2) } else { rgb(0xf8fafc) },
                             if errors > 0 { rgb(0xfecaca) } else { rgb(0xe2e8f0) },
-                        )),
+                        ))
+                        // Quick Exit / Menu button in top right
+                        .child(
+                            div()
+                                .id("btn_exit_arena")
+                                .px_3()
+                                .py_1p5()
+                                .rounded_lg()
+                                .bg(rgb(0xf1f5f9))
+                                .border_1()
+                                .border_color(rgb(0xcbd5e1))
+                                .text_size(px(11.0))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(rgb(0x475569))
+                                .cursor_pointer()
+                                .hover(|s| s.bg(rgb(0xe2e8f0)))
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                        this.state.active_view = ActiveView::CourseOverview;
+                                        this.state.is_sidebar_open = true;
+                                        cx.notify();
+                                    }),
+                                )
+                                .child("✕ Exit"),
+                        ),
                 ),
         )
-        // Progress Bar
+        // Subtle Progress Bar
         .child(
             div()
                 .w_full()
@@ -84,23 +113,23 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
                         .h_full()
                         .rounded_full()
                         .bg(rgb(0x0284c7))
-                        .w(px((progress * 7.5).max(4.0))),
+                        .w(px((progress * 9.0).max(4.0))),
                 ),
         )
-        // Typing Text Box
+        // Spacious, large-font typing text box
         .child(
             div()
-                .p_4()
-                .rounded_xl()
+                .p_5()
+                .rounded_2xl()
                 .bg(rgb(0xffffff))
                 .border_2()
                 .border_color(rgb(0x38bdf8))
                 .flex()
                 .flex_wrap()
-                .gap_1()
-                .text_size(px(22.0))
+                .gap_1p5()
+                .text_size(px(24.0))
                 .font_weight(FontWeight::MEDIUM)
-                .line_height(px(32.0))
+                .line_height(px(36.0))
                 .children(session.target_chars.iter().enumerate().map(|(idx, &ch)| {
                     let status = session.char_statuses[idx];
                     let is_cursor = idx == session.cursor_idx;
@@ -113,14 +142,15 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
                             if is_cursor {
                                 (rgb(0xffffff), rgb(0x0284c7))
                             } else {
-                                (rgb(0x475569), rgb(0xffffff))
+                                (rgb(0x334155), rgb(0xffffff))
                             }
                         }
                     };
 
                     div()
-                        .px_1()
-                        .rounded_sm()
+                        .px_1p5()
+                        .py_0p5()
+                        .rounded_md()
                         .bg(bg_color)
                         .text_color(text_color)
                         .border_b_2()
@@ -128,7 +158,7 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
                         .child(display_char.to_string())
                 })),
         )
-        // Unified Guidance Console (Keyboard + Anatomical Hands)
+        // Friendly Keyboard & Hands Console (Ages 3-16)
         .child(
             div()
                 .p_4()
@@ -139,46 +169,147 @@ pub fn render_typing_arena(view: &TypeStudentView, _cx: &mut Context<TypeStudent
                 .flex()
                 .flex_col()
                 .items_center()
-                .gap_3()
-                // Guidance Prompt Banner
+                .gap_3p5()
+                // Visual Keyboard
+                .child(render_friendly_keyboard(active_char, active_finger))
+                // Visual Hands
+                .child(render_friendly_hands(&hands_model)),
+        )
+        .into_any_element()
+}
+
+fn render_pre_activity_screen(
+    title: &str,
+    instruction: &str,
+    new_keys: &[char],
+    cx: &mut Context<TypeStudentView>,
+) -> AnyElement {
+    let title_copy = title.to_string();
+    let instruction_copy = instruction.to_string();
+
+    div()
+        .flex()
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .gap_6()
+        .p_8()
+        .rounded_2xl()
+        .bg(rgb(0xffffff))
+        .border_1()
+        .border_color(rgb(0xe2e8f0))
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap_2()
+                .child(div().text_size(px(44.0)).child("🎯"))
                 .child(
                     div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .w_full()
-                        .px_4()
-                        .py_1p5()
-                        .rounded_lg()
-                        .bg(rgb(0xe0f2fe))
-                        .border_1()
-                        .border_color(rgb(0xbae6fd))
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .child(div().text_size(px(15.0)).child("👉"))
-                                .child(
-                                    div()
-                                        .text_size(px(12.0))
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(rgb(0x0369a1))
-                                        .child(hands_model.active_finger_instruction()),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .text_size(px(10.0))
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(rgb(0x0369a1))
-                                .child("Home Row: A S D F (Left) | J K L ; (Right)"),
-                        ),
+                        .text_size(px(22.0))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgb(0x0f172a))
+                        .child(title_copy),
                 )
-                // Visual Keyboard
-                .child(render_keyboard(active_char, active_finger))
-                // Visual Hands
-                .child(render_hands(&hands_model)),
+                .child(
+                    div()
+                        .text_size(px(14.0))
+                        .text_color(rgb(0x475569))
+                        .child(if instruction_copy.is_empty() {
+                            "Place your fingers on Home Row (ASDF - JKL;) and get ready!".to_string()
+                        } else {
+                            instruction_copy
+                        }),
+                ),
+        )
+        .children(if !new_keys.is_empty() {
+            Some(
+                div()
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(rgb(0x64748b))
+                            .child("TARGET KEYS IN THIS DRILL:"),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap_2()
+                            .children(new_keys.iter().map(|c| {
+                                div()
+                                    .px_3p5()
+                                    .py_2()
+                                    .rounded_xl()
+                                    .bg(rgb(0xe0f2fe))
+                                    .border_1()
+                                    .border_color(rgb(0xbae6fd))
+                                    .text_size(px(18.0))
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(rgb(0x0369a1))
+                                    .child(c.to_uppercase().to_string())
+                            })),
+                    ),
+            )
+        } else {
+            None
+        })
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_4()
+                .mt_2()
+                .child(
+                    div()
+                        .id("btn_start_typing_live")
+                        .px_8()
+                        .py_3p5()
+                        .rounded_xl()
+                        .bg(rgb(0x0284c7))
+                        .text_size(px(16.0))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgb(0xffffff))
+                        .cursor_pointer()
+                        .hover(|s| s.bg(rgb(0x0369a1)))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                this.state.begin_live_activity();
+                                cx.notify();
+                            }),
+                        )
+                        .child("Start Activity (Press Space) ▶"),
+                )
+                .child(
+                    div()
+                        .id("btn_cancel_pre_activity")
+                        .px_5()
+                        .py_3p5()
+                        .rounded_xl()
+                        .bg(rgb(0xf1f5f9))
+                        .border_1()
+                        .border_color(rgb(0xcbd5e1))
+                        .text_size(px(14.0))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgb(0x475569))
+                        .cursor_pointer()
+                        .hover(|s| s.bg(rgb(0xe2e8f0)))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                this.state.active_view = ActiveView::CourseOverview;
+                                this.state.is_sidebar_open = true;
+                                cx.notify();
+                            }),
+                        )
+                        .child("Back to Lessons"),
+                ),
         )
         .into_any_element()
 }
@@ -188,7 +319,7 @@ fn metric_pill(label: &'static str, value: String, text_color: Rgba, bg: Rgba, b
         .flex()
         .flex_col()
         .items_center()
-        .px_3p5()
+        .px_4()
         .py_1()
         .rounded_lg()
         .bg(bg)
@@ -210,18 +341,18 @@ fn metric_pill(label: &'static str, value: String, text_color: Rgba, bg: Rgba, b
         )
 }
 
-fn render_keyboard(active_char: Option<char>, _active_finger: Option<Finger>) -> impl IntoElement {
+fn render_friendly_keyboard(active_char: Option<char>, _active_finger: Option<Finger>) -> impl IntoElement {
     let layout = get_keyboard_layout();
     let target_lower = active_char.map(|c| c.to_ascii_lowercase());
 
     div()
         .flex()
         .flex_col()
-        .gap_1()
+        .gap_1p5()
         .children(layout.into_iter().map(|row| {
             div()
                 .flex()
-                .gap_1()
+                .gap_1p5()
                 .justify_center()
                 .children(row.into_iter().map(|key| {
                     let is_active = target_lower.map_or(false, |t| {
@@ -237,13 +368,13 @@ fn render_keyboard(active_char: Option<char>, _active_finger: Option<Finger>) ->
                         (rgb(0xf8fafc), rgb(0x1e293b), finger_color)
                     };
 
-                    let width_px = key.width_units * 38.0;
+                    let width_px = key.width_units * 42.0;
                     let is_home_bump = key.label == "F" || key.label == "J";
 
                     div()
                         .w(px(width_px))
-                        .h(px(34.0))
-                        .rounded_md()
+                        .h(px(38.0))
+                        .rounded_lg()
                         .bg(bg_color)
                         .border_1()
                         .border_color(if is_active { rgb(0x0f172a) } else { rgb(0xcbd5e1) })
@@ -255,7 +386,7 @@ fn render_keyboard(active_char: Option<char>, _active_finger: Option<Finger>) ->
                         .justify_center()
                         .child(
                             div()
-                                .text_size(px(11.0))
+                                .text_size(px(13.0))
                                 .font_weight(if is_active {
                                     FontWeight::BOLD
                                 } else {
@@ -267,8 +398,8 @@ fn render_keyboard(active_char: Option<char>, _active_finger: Option<Finger>) ->
                         .children(if is_home_bump && !is_active {
                             Some(
                                 div()
-                                    .w(px(4.0))
-                                    .h(px(1.5))
+                                    .w(px(5.0))
+                                    .h(px(2.0))
                                     .rounded_full()
                                     .bg(rgb(0x64748b)),
                             )
@@ -279,13 +410,13 @@ fn render_keyboard(active_char: Option<char>, _active_finger: Option<Finger>) ->
         }))
 }
 
-fn render_hands(hands: &HandsGuideModel) -> impl IntoElement {
+fn render_friendly_hands(hands: &HandsGuideModel) -> impl IntoElement {
     div()
         .flex()
         .justify_around()
         .items_end()
         .w_full()
-        .px_6()
+        .px_8()
         .child(
             // Left Hand
             div()
@@ -296,18 +427,18 @@ fn render_hands(hands: &HandsGuideModel) -> impl IntoElement {
                     div()
                         .flex()
                         .items_end()
-                        .gap_1p5()
-                        .child(render_finger(hands.left_pinky, hands.target_char))
-                        .child(render_finger(hands.left_ring, hands.target_char))
-                        .child(render_finger(hands.left_middle, hands.target_char))
-                        .child(render_finger(hands.left_index, hands.target_char))
-                        .child(render_finger(hands.left_thumb, hands.target_char)),
+                        .gap_2()
+                        .child(render_friendly_finger(hands.left_pinky, hands.target_char))
+                        .child(render_friendly_finger(hands.left_ring, hands.target_char))
+                        .child(render_friendly_finger(hands.left_middle, hands.target_char))
+                        .child(render_friendly_finger(hands.left_index, hands.target_char))
+                        .child(render_friendly_finger(hands.left_thumb, hands.target_char)),
                 )
                 .child(
                     div()
-                        .w(px(165.0))
+                        .w(px(200.0))
                         .h(px(38.0))
-                        .rounded_b_2xl()
+                        .rounded_b_3xl()
                         .bg(rgb(0xf1f5f9))
                         .border_1()
                         .border_color(rgb(0xcbd5e1))
@@ -316,7 +447,7 @@ fn render_hands(hands: &HandsGuideModel) -> impl IntoElement {
                         .justify_center()
                         .child(
                             div()
-                                .text_size(px(10.0))
+                                .text_size(px(11.0))
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(rgb(0x64748b))
                                 .child("LEFT HAND"),
@@ -333,18 +464,18 @@ fn render_hands(hands: &HandsGuideModel) -> impl IntoElement {
                     div()
                         .flex()
                         .items_end()
-                        .gap_1p5()
-                        .child(render_finger(hands.right_thumb, hands.target_char))
-                        .child(render_finger(hands.right_index, hands.target_char))
-                        .child(render_finger(hands.right_middle, hands.target_char))
-                        .child(render_finger(hands.right_ring, hands.target_char))
-                        .child(render_finger(hands.right_pinky, hands.target_char)),
+                        .gap_2()
+                        .child(render_friendly_finger(hands.right_thumb, hands.target_char))
+                        .child(render_friendly_finger(hands.right_index, hands.target_char))
+                        .child(render_friendly_finger(hands.right_middle, hands.target_char))
+                        .child(render_friendly_finger(hands.right_ring, hands.target_char))
+                        .child(render_friendly_finger(hands.right_pinky, hands.target_char)),
                 )
                 .child(
                     div()
-                        .w(px(165.0))
+                        .w(px(200.0))
                         .h(px(38.0))
-                        .rounded_b_2xl()
+                        .rounded_b_3xl()
                         .bg(rgb(0xf1f5f9))
                         .border_1()
                         .border_color(rgb(0xcbd5e1))
@@ -353,7 +484,7 @@ fn render_hands(hands: &HandsGuideModel) -> impl IntoElement {
                         .justify_center()
                         .child(
                             div()
-                                .text_size(px(10.0))
+                                .text_size(px(11.0))
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(rgb(0x64748b))
                                 .child("RIGHT HAND"),
@@ -362,8 +493,10 @@ fn render_hands(hands: &HandsGuideModel) -> impl IntoElement {
         )
 }
 
-fn render_finger(finger: HandFingerState, target_char: Option<char>) -> impl IntoElement {
-    let height = if finger.is_active { finger.active_height } else { finger.normal_height };
+fn render_friendly_finger(finger: HandFingerState, target_char: Option<char>) -> impl IntoElement {
+    let height = if finger.is_active { finger.active_height + 4.0 } else { finger.normal_height + 4.0 };
+    let width = finger.width + 4.0;
+
     let (f_r, f_g, f_b) = finger.finger.rgb();
     let finger_color = rgb((f_r as u32) << 16 | (f_g as u32) << 8 | (f_b as u32));
 
@@ -381,9 +514,9 @@ fn render_finger(finger: HandFingerState, target_char: Option<char>) -> impl Int
     };
 
     div()
-        .w(px(finger.width))
+        .w(px(width))
         .h(px(height))
-        .rounded_t_full()
+        .rounded_t_2xl()
         .bg(bg_color)
         .border_2()
         .border_color(border_color)
@@ -391,11 +524,12 @@ fn render_finger(finger: HandFingerState, target_char: Option<char>) -> impl Int
         .flex_col()
         .items_center()
         .justify_between()
-        .py_1()
+        .py_1p5()
+        // Resting / Target Keycap on Fingertip
         .child(
             div()
-                .w(px(20.0))
-                .h(px(20.0))
+                .w(px(24.0))
+                .h(px(24.0))
                 .rounded_full()
                 .bg(if finger.is_active { rgb(0xffffff) } else { rgb(0xe2e8f0) })
                 .border_1()
@@ -405,17 +539,18 @@ fn render_finger(finger: HandFingerState, target_char: Option<char>) -> impl Int
                 .justify_center()
                 .child(
                     div()
-                        .text_size(px(10.0))
+                        .text_size(px(12.0))
                         .font_weight(FontWeight::BOLD)
-                        .text_color(if finger.is_active { finger_color } else { rgb(0x334155) })
+                        .text_color(if finger.is_active { finger_color } else { rgb(0x1e293b) })
                         .child(tip_label),
                 ),
         )
+        // Clear Finger Name Label
         .child(
             div()
-                .text_size(px(8.5))
+                .text_size(px(9.5))
                 .font_weight(FontWeight::BOLD)
-                .text_color(if finger.is_active { rgb(0xffffff) } else { rgb(0x64748b) })
+                .text_color(if finger.is_active { rgb(0xffffff) } else { rgb(0x475569) })
                 .child(finger.label),
         )
 }

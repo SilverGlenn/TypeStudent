@@ -60,6 +60,10 @@ pub struct AppState {
     
     // Review session
     pub review_custom_text: Option<String>,
+
+    // UI state
+    pub is_sidebar_open: bool,
+    pub is_pre_activity: bool,
 }
 
 impl AppState {
@@ -83,6 +87,8 @@ impl AppState {
             abc_game: AbcGame::new(),
             active_diploma: None,
             review_custom_text: None,
+            is_sidebar_open: true,
+            is_pre_activity: false,
         };
 
         // Apply audio settings from active profile
@@ -94,6 +100,17 @@ impl AppState {
         state
     }
 
+    pub fn toggle_sidebar(&mut self) {
+        self.is_sidebar_open = !self.is_sidebar_open;
+    }
+
+    pub fn begin_live_activity(&mut self) {
+        self.is_pre_activity = false;
+        if let Some(session) = &mut self.typing_session {
+            session.start_time = None; // Reset timer so it starts with first actual keystroke
+        }
+    }
+
     pub fn start_exercise(&mut self, lesson_idx: usize, exercise_idx: usize) {
         if lesson_idx < self.lessons.len() && exercise_idx < self.lessons[lesson_idx].exercises.len() {
             self.current_lesson_idx = lesson_idx;
@@ -102,6 +119,8 @@ impl AppState {
             self.typing_session = Some(TypingSession::new(&ex.text));
             self.current_exercise_info = Some(ex);
             self.active_view = ActiveView::TypingArena;
+            self.is_sidebar_open = false;
+            self.is_pre_activity = true;
         }
     }
 
@@ -117,6 +136,8 @@ impl AppState {
             text: text.to_string(),
         });
         self.active_view = ActiveView::TypingArena;
+        self.is_sidebar_open = false;
+        self.is_pre_activity = true;
     }
 
     pub fn start_smart_review(&mut self, drill_text: &str) {
@@ -130,11 +151,35 @@ impl AppState {
             text: drill_text.to_string(),
         });
         self.active_view = ActiveView::TypingArena;
+        self.is_sidebar_open = false;
+        self.is_pre_activity = true;
+    }
+
+    pub fn start_story_practice(&mut self, title: &str, story_text: &str) {
+        self.typing_session = Some(TypingSession::new(story_text));
+        self.current_exercise_info = Some(Exercise {
+            id: "story_practice".to_string(),
+            title: title.to_string(),
+            exercise_type: crate::course::ExerciseType::SentenceDrill,
+            instruction: "Read and type the story passage smoothly.".to_string(),
+            new_keys: vec![],
+            text: story_text.to_string(),
+        });
+        self.active_view = ActiveView::TypingArena;
+        self.is_sidebar_open = false;
+        self.is_pre_activity = true;
     }
 
     pub fn on_keystroke(&mut self, c: char) {
         match self.active_view {
             ActiveView::TypingArena => {
+                if self.is_pre_activity {
+                    self.begin_live_activity();
+                    if c == ' ' || c == '\n' {
+                        return;
+                    }
+                }
+
                 if let Some(session) = &mut self.typing_session {
                     let is_correct = session.handle_char_input(c);
                     let latency = session.key_timings.last().map(|k| k.latency_ms).unwrap_or(0);
@@ -206,19 +251,6 @@ impl AppState {
         } else if self.active_view == ActiveView::GameClouds {
             self.clouds_game.handle_char('\x08');
         }
-    }
-
-    pub fn start_story_practice(&mut self, title: &str, text: &str) {
-        self.typing_session = Some(TypingSession::new(text));
-        self.current_exercise_info = Some(Exercise {
-            id: "story".to_string(),
-            title: title.to_string(),
-            exercise_type: crate::course::ExerciseType::SentenceDrill,
-            instruction: "Story Reading & Typing Practice. Enjoy the adventure!".to_string(),
-            new_keys: vec![],
-            text: text.to_string(),
-        });
-        self.active_view = ActiveView::TypingArena;
     }
 
     pub fn check_trophies(&mut self) {

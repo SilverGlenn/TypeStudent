@@ -80,6 +80,8 @@ impl Render for TypeStudentView {
         window.focus(&self.focus_handle);
 
         let active_view = self.state.active_view;
+        let is_typing_view = active_view == ActiveView::TypingArena;
+        let is_sidebar_open = self.state.is_sidebar_open;
         let active_profile = self.state.profile_store.active_profile().cloned();
         let current_stars = active_profile.as_ref().map(|p| p.total_stars()).unwrap_or(0);
         let student_name = active_profile.as_ref().map(|p| p.name.clone()).unwrap_or_else(|| "Student".to_string());
@@ -105,220 +107,277 @@ impl Render for TypeStudentView {
                     cx.notify();
                 }
             }))
-            .child(
-                // 1. Sidebar Navigation
-                div()
-                    .w(px(250.0))
-                    .h_full()
-                    .bg(rgb(0xffffff))
-                    .border_r_1()
-                    .border_color(rgb(0xe2e8f0))
-                    .flex()
-                    .flex_col()
-                    .justify_between()
-                    .p_4()
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_4()
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_2()
-                                            .child(div().text_size(px(24.0)).child("⌨️"))
-                                            .child(
-                                                div()
-                                                    .text_size(px(18.0))
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(rgb(0x0369a1))
-                                                    .child("TypeStudent"),
-                                            ),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(px(11.0))
-                                            .text_color(rgb(0x64748b))
-                                            .child("Touch Typing Tutor & Games"),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .children(get_sidebar_items().into_iter().enumerate().map(|(idx, item)| {
-                                        let is_active = self.state.active_view == item.view;
-                                        let target_view = item.view;
-                                        let nav_id = format!("sidebar_nav_{}", idx);
+            // 1. Optional / Toggleable Sidebar Navigation
+            .children(if is_sidebar_open {
+                Some(
+                    div()
+                        .w(px(250.0))
+                        .h_full()
+                        .bg(rgb(0xffffff))
+                        .border_r_1()
+                        .border_color(rgb(0xe2e8f0))
+                        .flex()
+                        .flex_col()
+                        .justify_between()
+                        .p_4()
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_4()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .justify_between()
+                                        .items_center()
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .child(div().text_size(px(22.0)).child("⌨️"))
+                                                .child(
+                                                    div()
+                                                        .text_size(px(17.0))
+                                                        .font_weight(FontWeight::BOLD)
+                                                        .text_color(rgb(0x0369a1))
+                                                        .child("TypeStudent"),
+                                                ),
+                                        )
+                                        .child(
+                                            div()
+                                                .id("btn_collapse_sidebar")
+                                                .px_2()
+                                                .py_1()
+                                                .rounded_md()
+                                                .bg(rgb(0xf1f5f9))
+                                                .cursor_pointer()
+                                                .hover(|s| s.bg(rgb(0xe2e8f0)))
+                                                .text_size(px(12.0))
+                                                .text_color(rgb(0x64748b))
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                                        this.state.toggle_sidebar();
+                                                        cx.notify();
+                                                    }),
+                                                )
+                                                .child("◀"),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_1()
+                                        .children(get_sidebar_items().into_iter().enumerate().map(|(idx, item)| {
+                                            let is_active = self.state.active_view == item.view;
+                                            let target_view = item.view;
+                                            let nav_id = format!("sidebar_nav_{}", idx);
 
-                                        div()
-                                            .id(ElementId::Name(nav_id.into()))
-                                            .flex()
-                                            .items_center()
-                                            .justify_between()
-                                            .px_3()
-                                            .py_2()
-                                            .rounded_md()
-                                            .cursor_pointer()
-                                            .bg(if is_active { rgb(0xe0f2fe) } else { rgb(0xffffff) })
-                                            .border_1()
-                                            .border_color(if is_active { rgb(0xbae6fd) } else { rgb(0xffffff) })
-                                            .hover(|s| if !is_active { s.bg(rgb(0xf1f5f9)) } else { s })
-                                            .on_mouse_down(
-                                                MouseButton::Left,
-                                                cx.listener(move |this, _event: &MouseDownEvent, _window, cx| {
-                                                    this.state.active_view = target_view;
-                                                    cx.notify();
-                                                }),
-                                            )
-                                            .child(
-                                                div()
-                                                    .flex()
-                                                    .items_center()
-                                                    .gap_3()
-                                                    .child(div().text_size(px(16.0)).child(item.icon))
-                                                    .child(
-                                                        div()
-                                                            .text_size(px(13.0))
-                                                            .font_weight(if is_active {
-                                                                FontWeight::BOLD
-                                                            } else {
-                                                                FontWeight::MEDIUM
-                                                            })
-                                                            .text_color(if is_active {
-                                                                rgb(0x0369a1)
-                                                            } else {
-                                                                rgb(0x334155)
-                                                            })
-                                                            .child(item.title),
-                                                    ),
-                                            )
-                                            .children(item.badge.map(|b| {
-                                                div()
-                                                    .px_2()
-                                                    .py_0p5()
-                                                    .rounded_full()
-                                                    .bg(if is_active { rgb(0x0284c7) } else { rgb(0xf1f5f9) })
-                                                    .text_size(px(10.0))
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(if is_active { rgb(0xffffff) } else { rgb(0x475569) })
-                                                    .child(b)
-                                            }))
-                                    })),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .id("profile_pill_bottom")
-                            .p_3()
-                            .rounded_lg()
-                            .bg(rgb(0xf8fafc))
-                            .border_1()
-                            .border_color(rgb(0xe2e8f0))
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .cursor_pointer()
-                            .hover(|s| s.bg(rgb(0xf1f5f9)))
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
-                                    this.state.active_view = ActiveView::Profiles;
-                                    cx.notify();
-                                }),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .child(div().text_size(px(22.0)).child(avatar))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .flex_col()
-                                            .child(
-                                                div()
-                                                    .text_size(px(13.0))
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(rgb(0x0f172a))
-                                                    .child(student_name),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_size(px(11.0))
-                                                    .font_weight(FontWeight::SEMIBOLD)
-                                                    .text_color(rgb(0xd97706))
-                                                    .child(format!("⭐ {} Stars", current_stars)),
-                                            ),
-                                    ),
-                            )
-                            .child(div().text_size(px(12.0)).text_color(rgb(0x94a3b8)).child("⇄")),
-                    ),
-            )
+                                            div()
+                                                .id(ElementId::Name(nav_id.into()))
+                                                .flex()
+                                                .items_center()
+                                                .justify_between()
+                                                .px_3()
+                                                .py_2()
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .bg(if is_active { rgb(0xe0f2fe) } else { rgb(0xffffff) })
+                                                .border_1()
+                                                .border_color(if is_active { rgb(0xbae6fd) } else { rgb(0xffffff) })
+                                                .hover(|s| if !is_active { s.bg(rgb(0xf1f5f9)) } else { s })
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(move |this, _event: &MouseDownEvent, _window, cx| {
+                                                        this.state.active_view = target_view;
+                                                        cx.notify();
+                                                    }),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_3()
+                                                        .child(div().text_size(px(16.0)).child(item.icon))
+                                                        .child(
+                                                            div()
+                                                                .text_size(px(13.0))
+                                                                .font_weight(if is_active {
+                                                                    FontWeight::BOLD
+                                                                } else {
+                                                                    FontWeight::MEDIUM
+                                                                })
+                                                                .text_color(if is_active {
+                                                                    rgb(0x0369a1)
+                                                                } else {
+                                                                    rgb(0x334155)
+                                                                })
+                                                                .child(item.title),
+                                                        ),
+                                                )
+                                                .children(item.badge.map(|b| {
+                                                    div()
+                                                        .px_2()
+                                                        .py_0p5()
+                                                        .rounded_full()
+                                                        .bg(if is_active { rgb(0x0284c7) } else { rgb(0xf1f5f9) })
+                                                        .text_size(px(10.0))
+                                                        .font_weight(FontWeight::BOLD)
+                                                        .text_color(if is_active { rgb(0xffffff) } else { rgb(0x475569) })
+                                                        .child(b)
+                                                }))
+                                        })),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .id("profile_pill_bottom")
+                                .p_3()
+                                .rounded_lg()
+                                .bg(rgb(0xf8fafc))
+                                .border_1()
+                                .border_color(rgb(0xe2e8f0))
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .cursor_pointer()
+                                .hover(|s| s.bg(rgb(0xf1f5f9)))
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                        this.state.active_view = ActiveView::Profiles;
+                                        cx.notify();
+                                    }),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .child(div().text_size(px(22.0)).child(avatar))
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_col()
+                                                .child(
+                                                    div()
+                                                        .text_size(px(13.0))
+                                                        .font_weight(FontWeight::BOLD)
+                                                        .text_color(rgb(0x0f172a))
+                                                        .child(student_name),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_size(px(11.0))
+                                                        .font_weight(FontWeight::SEMIBOLD)
+                                                        .text_color(rgb(0xd97706))
+                                                        .child(format!("⭐ {} Stars", current_stars)),
+                                                ),
+                                        ),
+                                )
+                                .child(div().text_size(px(12.0)).text_color(rgb(0x94a3b8)).child("⇄")),
+                        ),
+                )
+            } else {
+                None
+            })
+            // 2. Main Viewport
             .child(
-                // 2. Main Content Area
                 div()
                     .flex_1()
                     .h_full()
                     .flex()
                     .flex_col()
                     .bg(rgb(0xf8fafc))
-                    .child(
-                        div()
-                            .h(px(50.0))
-                            .px_6()
-                            .bg(rgb(0xffffff))
-                            .border_b_1()
-                            .border_color(rgb(0xe2e8f0))
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .text_size(px(15.0))
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(rgb(0x0369a1))
-                                    .child(match active_view {
-                                        ActiveView::CourseOverview => "Course Curriculum",
-                                        ActiveView::TypingArena => "Typing Arena",
-                                        ActiveView::ExerciseResults => "Exercise Results",
-                                        ActiveView::SmartReview => "Smart Review",
-                                        ActiveView::StoryStudio => "Story Studio",
-                                        ActiveView::Trophies => "Trophy Room",
-                                        ActiveView::TypingTests => "Typing Tests",
-                                        ActiveView::DiplomaView => "Certificate Diploma",
-                                        ActiveView::GamesHub => "Arcade Mini-Games",
-                                        ActiveView::GameBubbles => "Game: Bubbles",
-                                        ActiveView::GameWordTris => "Game: WordTris",
-                                        ActiveView::GameClouds => "Game: Clouds",
-                                        ActiveView::GameAbc => "Game: ABC Sprint",
-                                        ActiveView::Statistics => "Statistics & Heatmap",
-                                        ActiveView::Profiles => "Student Profiles",
-                                        ActiveView::Settings => "Settings",
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .rounded_md()
-                                    .bg(rgb(0xf1f5f9))
-                                    .border_1()
-                                    .border_color(rgb(0xe2e8f0))
-                                    .text_size(px(11.0))
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(rgb(0x475569))
-                                    .child("Offline 🔌"),
-                            ),
-                    )
+                    // Header Bar (Hidden during typing activities to eliminate clutter)
+                    .children(if !is_typing_view {
+                        Some(
+                            div()
+                                .h(px(50.0))
+                                .px_6()
+                                .bg(rgb(0xffffff))
+                                .border_b_1()
+                                .border_color(rgb(0xe2e8f0))
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .children(if !is_sidebar_open {
+                                            Some(
+                                                div()
+                                                    .id("btn_expand_sidebar")
+                                                    .px_2p5()
+                                                    .py_1()
+                                                    .rounded_md()
+                                                    .bg(rgb(0xf1f5f9))
+                                                    .border_1()
+                                                    .border_color(rgb(0xe2e8f0))
+                                                    .cursor_pointer()
+                                                    .hover(|s| s.bg(rgb(0xe2e8f0)))
+                                                    .text_size(px(12.0))
+                                                    .font_weight(FontWeight::BOLD)
+                                                    .text_color(rgb(0x0369a1))
+                                                    .on_mouse_down(
+                                                        MouseButton::Left,
+                                                        cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
+                                                            this.state.toggle_sidebar();
+                                                            cx.notify();
+                                                        }),
+                                                    )
+                                                    .child("☰ Menu"),
+                                            )
+                                        } else {
+                                            None
+                                        })
+                                        .child(
+                                            div()
+                                                .text_size(px(15.0))
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_color(rgb(0x0369a1))
+                                                .child(match active_view {
+                                                    ActiveView::CourseOverview => "Course Curriculum",
+                                                    ActiveView::TypingArena => "Typing Arena",
+                                                    ActiveView::ExerciseResults => "Exercise Results",
+                                                    ActiveView::SmartReview => "Smart Review",
+                                                    ActiveView::StoryStudio => "Story Studio",
+                                                    ActiveView::Trophies => "Trophy Room",
+                                                    ActiveView::TypingTests => "Typing Tests",
+                                                    ActiveView::DiplomaView => "Certificate Diploma",
+                                                    ActiveView::GamesHub => "Arcade Mini-Games",
+                                                    ActiveView::GameBubbles => "Game: Bubbles",
+                                                    ActiveView::GameWordTris => "Game: WordTris",
+                                                    ActiveView::GameClouds => "Game: Clouds",
+                                                    ActiveView::GameAbc => "Game: ABC Sprint",
+                                                    ActiveView::Statistics => "Statistics & Heatmap",
+                                                    ActiveView::Profiles => "Student Profiles",
+                                                    ActiveView::Settings => "Settings",
+                                                }),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .px_3()
+                                        .py_1()
+                                        .rounded_md()
+                                        .bg(rgb(0xf1f5f9))
+                                        .border_1()
+                                        .border_color(rgb(0xe2e8f0))
+                                        .text_size(px(11.0))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(rgb(0x475569))
+                                        .child("Offline 🔌"),
+                                ),
+                        )
+                    } else {
+                        None
+                    })
+                    // Main View Content
                     .child(
                         div()
                             .flex_1()
