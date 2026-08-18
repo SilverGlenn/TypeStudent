@@ -1,6 +1,4 @@
-mod app;
-
-use app::TypeStudentView;
+use type_student::app::TypeStudentView;
 use gpui::*;
 
 fn main() {

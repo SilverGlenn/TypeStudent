@@ -1,7 +1,4 @@
-pub mod keyboard;
-pub mod hands;
 pub mod gauge;
-
-pub use keyboard::*;
-pub use hands::*;
-pub use gauge::*;
+pub mod hands;
+pub mod keyboard;
+pub mod ui;
