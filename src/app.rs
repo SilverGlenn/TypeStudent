@@ -570,11 +570,12 @@ impl TypeStudentView {
         let progress = session.progress_ratio() * 100.0;
         let active_char = session.current_char();
         let active_finger = self.state.active_finger();
+        let hands_model = HandsGuideModel::for_active_target(active_finger, active_char);
 
         div()
             .flex()
             .flex_col()
-            .gap_5()
+            .gap_4()
             .child(
                 // Exercise Header & HUD
                 div()
@@ -697,7 +698,7 @@ impl TypeStudentView {
             .child(
                 div()
                     .w_full()
-                    .h(px(6.0))
+                    .h(px(5.0))
                     .rounded_full()
                     .bg(rgb(0xe2e8f0))
                     .child(
@@ -711,7 +712,7 @@ impl TypeStudentView {
             // Typing Text Box Area (Clean white card with soothing contrast)
             .child(
                 div()
-                    .p_6()
+                    .p_5()
                     .rounded_xl()
                     .bg(rgb(0xffffff))
                     .border_2()
@@ -721,7 +722,7 @@ impl TypeStudentView {
                     .gap_1()
                     .text_size(px(22.0))
                     .font_weight(FontWeight::MEDIUM)
-                    .line_height(px(34.0))
+                    .line_height(px(32.0))
                     .children(
                         session.target_chars.iter().enumerate().map(|(idx, &ch)| {
                             let status = session.char_statuses[idx];
@@ -752,36 +753,69 @@ impl TypeStudentView {
                         })
                     )
             )
-            // Interactive Visual Keyboard (Clean Light Theme)
+            // Live Finger Guidance Prompt Banner
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .px_4()
+                    .py_2()
+                    .rounded_lg()
+                    .bg(rgb(0xe0f2fe))
+                    .border_1()
+                    .border_color(rgb(0xbae6fd))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(div().text_size(px(16.0)).child("👉"))
+                            .child(
+                                div()
+                                    .text_size(px(13.0))
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(rgb(0x0369a1))
+                                    .child(hands_model.active_finger_instruction())
+                            )
+                    )
+                    .child(
+                        div()
+                            .text_size(px(11.0))
+                            .text_color(rgb(0x0369a1))
+                            .child("Keep eyes on screen • Fingers on Home Row (ASDF - JKL;)")
+                    )
+            )
+            // Interactive Visual Keyboard (Color-Coded Finger Zones)
             .child(
                 self.render_visual_keyboard(active_char, active_finger)
             )
-            // Hands & Finger Placement Visualizer
+            // Realistic Visual Hands (Anatomical Left & Right Hands with Animated Active Finger)
             .child(
-                self.render_visual_hands(active_finger)
+                self.render_visual_hands(&hands_model)
             )
             .into_any_element()
     }
 
-    // Visual Keyboard Component (Clean Light Aesthetic)
+    // Visual Keyboard Component (Color-Coded Matching Finger Zones)
     fn render_visual_keyboard(&self, active_char: Option<char>, _active_finger: Option<Finger>) -> impl IntoElement {
         let layout = get_keyboard_layout();
         let target_lower = active_char.map(|c| c.to_ascii_lowercase());
 
         div()
-            .p_4()
+            .p_3()
             .rounded_xl()
             .bg(rgb(0xffffff))
             .border_1()
             .border_color(rgb(0xe2e8f0))
             .flex()
             .flex_col()
-            .gap_1p5()
+            .gap_1()
             .children(
                 layout.into_iter().map(|row| {
                     div()
                         .flex()
-                        .gap_1p5()
+                        .gap_1()
                         .justify_center()
                         .children(
                             row.into_iter().map(|key| {
@@ -789,36 +823,33 @@ impl TypeStudentView {
                                     key.char_val == t || (t == ' ' && key.char_val == ' ')
                                 });
 
-                                let bg_color = if is_active {
-                                    rgb(0x0284c7)
+                                let (f_r, f_g, f_b) = key.finger.rgb();
+                                let finger_color = rgb((f_r as u32) << 16 | (f_g as u32) << 8 | (f_b as u32));
+
+                                let (bg_color, text_color, border_bottom) = if is_active {
+                                    (finger_color, rgb(0xffffff), rgb(0x0f172a))
                                 } else {
-                                    rgb(0xf8fafc)
+                                    (rgb(0xf8fafc), rgb(0x1e293b), finger_color)
                                 };
 
-                                let text_color = if is_active {
-                                    rgb(0xffffff)
-                                } else {
-                                    rgb(0x1e293b)
-                                };
-
-                                let width_px = key.width_units * 42.0;
+                                let width_px = key.width_units * 39.0;
 
                                 div()
                                     .w(px(width_px))
-                                    .h(px(40.0))
+                                    .h(px(36.0))
                                     .rounded_md()
                                     .bg(bg_color)
                                     .border_1()
-                                    .border_color(if is_active { rgb(0x0369a1) } else { rgb(0xcbd5e1) })
-                                    .border_b_2()
-                                    .border_color(if is_active { rgb(0x075985) } else { rgb(0x94a3b8) })
+                                    .border_color(if is_active { rgb(0x0f172a) } else { rgb(0xcbd5e1) })
+                                    .border_b_3()
+                                    .border_color(border_bottom)
                                     .flex()
                                     .flex_col()
                                     .items_center()
                                     .justify_center()
                                     .child(
                                         div()
-                                            .text_size(px(13.0))
+                                            .text_size(px(12.0))
                                             .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::SEMIBOLD })
                                             .text_color(text_color)
                                             .child(key.label)
@@ -829,10 +860,8 @@ impl TypeStudentView {
             )
     }
 
-    // Visual Hands Guide Component
-    fn render_visual_hands(&self, active_finger: Option<Finger>) -> impl IntoElement {
-        let hands = HandsGuideModel::for_active_finger(active_finger);
-
+    // Authentic Hand Shapes & Animated Finger Guides (Classic TypingMaster Style)
+    fn render_visual_hands(&self, hands: &HandsGuideModel) -> impl IntoElement {
         div()
             .p_4()
             .rounded_xl()
@@ -841,93 +870,185 @@ impl TypeStudentView {
             .border_color(rgb(0xe2e8f0))
             .flex()
             .justify_around()
-            .items_center()
+            .items_end()
             .child(
-                // Left Hand
+                // Left Hand Container
                 div()
                     .flex()
                     .flex_col()
                     .items_center()
-                    .gap_2()
+                    .gap_1()
                     .child(
                         div()
-                            .text_size(px(13.0))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::BOLD)
                             .text_color(rgb(0x0369a1))
                             .child("Left Hand (Home: A S D F)")
                     )
                     .child(
+                        // Anatomical Hand Structure
                         div()
                             .flex()
-                            .gap_2()
-                            .child(self.render_finger_indicator(hands.left_pinky))
-                            .child(self.render_finger_indicator(hands.left_ring))
-                            .child(self.render_finger_indicator(hands.left_middle))
-                            .child(self.render_finger_indicator(hands.left_index))
-                            .child(self.render_finger_indicator(hands.left_thumb))
+                            .flex_col()
+                            .items_center()
+                            // Rising Fingers Row
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_end()
+                                    .gap_1p5()
+                                    .child(self.render_finger_pillar(hands.left_pinky, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.left_ring, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.left_middle, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.left_index, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.left_thumb, hands.target_char))
+                            )
+                            // Palm Base
+                            .child(
+                                div()
+                                    .w(px(175.0))
+                                    .h(px(45.0))
+                                    .rounded_b_2xl()
+                                    .bg(rgb(0xf1f5f9))
+                                    .border_1()
+                                    .border_color(rgb(0xcbd5e1))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_size(px(11.0))
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(rgb(0x64748b))
+                                            .child("LEFT PALM")
+                                    )
+                            )
                     )
             )
             .child(
-                // Right Hand
+                // Right Hand Container
                 div()
                     .flex()
                     .flex_col()
                     .items_center()
-                    .gap_2()
+                    .gap_1()
                     .child(
                         div()
-                            .text_size(px(13.0))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::BOLD)
                             .text_color(rgb(0x0369a1))
                             .child("Right Hand (Home: J K L ;)")
                     )
                     .child(
+                        // Anatomical Hand Structure
                         div()
                             .flex()
-                            .gap_2()
-                            .child(self.render_finger_indicator(hands.right_thumb))
-                            .child(self.render_finger_indicator(hands.right_index))
-                            .child(self.render_finger_indicator(hands.right_middle))
-                            .child(self.render_finger_indicator(hands.right_ring))
-                            .child(self.render_finger_indicator(hands.right_pinky))
+                            .flex_col()
+                            .items_center()
+                            // Rising Fingers Row
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_end()
+                                    .gap_1p5()
+                                    .child(self.render_finger_pillar(hands.right_thumb, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.right_index, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.right_middle, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.right_ring, hands.target_char))
+                                    .child(self.render_finger_pillar(hands.right_pinky, hands.target_char))
+                            )
+                            // Palm Base
+                            .child(
+                                div()
+                                    .w(px(175.0))
+                                    .h(px(45.0))
+                                    .rounded_b_2xl()
+                                    .bg(rgb(0xf1f5f9))
+                                    .border_1()
+                                    .border_color(rgb(0xcbd5e1))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_size(px(11.0))
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(rgb(0x64748b))
+                                            .child("RIGHT PALM")
+                                    )
+                            )
                     )
             )
     }
 
-    fn render_finger_indicator(&self, finger: HandFingerState) -> impl IntoElement {
+    // Individual Finger Pillar with Animated Extension and Glowing Fingertip
+    fn render_finger_pillar(&self, finger: HandFingerState, target_char: Option<char>) -> impl IntoElement {
+        let height = if finger.is_active { finger.active_height } else { finger.normal_height };
+        let width = finger.width;
+
+        let (f_r, f_g, f_b) = finger.finger.rgb();
+        let finger_color = rgb((f_r as u32) << 16 | (f_g as u32) << 8 | (f_b as u32));
+
         let bg_color = if finger.is_active {
-            rgb(0x0284c7)
+            finger_color
         } else {
             rgb(0xf8fafc)
         };
 
-        let text_color = if finger.is_active {
-            rgb(0xffffff)
+        let border_color = if finger.is_active {
+            rgb(0x0f172a)
         } else {
-            rgb(0x475569)
+            rgb(0xcbd5e1)
+        };
+
+        let tip_label = if finger.is_active {
+            match target_char {
+                Some(' ') => "␣".to_string(),
+                Some(c) => c.to_uppercase().to_string(),
+                None => finger.home_key.to_string(),
+            }
+        } else {
+            finger.home_key.to_string()
         };
 
         div()
+            .w(px(width))
+            .h(px(height))
+            .rounded_t_full()
+            .bg(bg_color)
+            .border_2()
+            .border_color(border_color)
             .flex()
             .flex_col()
             .items_center()
-            .px_3()
-            .py_2()
-            .rounded_lg()
-            .bg(bg_color)
-            .border_1()
-            .border_color(if finger.is_active { rgb(0x0369a1) } else { rgb(0xe2e8f0) })
+            .justify_between()
+            .py_1p5()
+            // Fingertip Cap (Resting Key or Target Key)
             .child(
                 div()
-                    .text_size(px(12.0))
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(text_color)
-                    .child(finger.home_key)
+                    .w(px(22.0))
+                    .h(px(22.0))
+                    .rounded_full()
+                    .bg(if finger.is_active { rgb(0xffffff) } else { rgb(0xe2e8f0) })
+                    .border_1()
+                    .border_color(if finger.is_active { rgb(0x0f172a) } else { rgb(0x94a3b8) })
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        div()
+                            .text_size(px(11.0))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(if finger.is_active { finger_color } else { rgb(0x334155) })
+                            .child(tip_label)
+                    )
             )
+            // Finger Name Label
             .child(
                 div()
-                    .text_size(px(10.0))
-                    .text_color(text_color)
+                    .text_size(px(9.0))
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(if finger.is_active { rgb(0xffffff) } else { rgb(0x64748b) })
                     .child(finger.label)
             )
     }
