@@ -150,6 +150,7 @@ impl TtsWorker {
                                     let mut cache = sample_cache.lock().unwrap();
                                     cache.insert(key, samples);
                                 }
+                                thread::sleep(std::time::Duration::from_millis(20));
                             }
                         }
                     }
@@ -547,7 +548,7 @@ impl AudioEngine {
         }
         if let Some(tts) = &self.tts {
             let name = char_speech_name(c);
-            tts.speak(name, false);
+            tts.speak(name, true);
         }
     }
 
@@ -556,7 +557,7 @@ impl AudioEngine {
             return;
         }
         if let Some(tts) = &self.tts {
-            tts.speak(word.to_string(), false);
+            tts.speak(word.to_string(), true);
         }
     }
 
@@ -574,11 +575,14 @@ impl AudioEngine {
             return;
         }
         let mut words: Vec<String> = Vec::new();
-        // 1. Process words in exact order of appearance
+        // 1. Process first 25 words in exact order of appearance to avoid overloading the CPU
         for word in text.split_whitespace() {
             let clean = word.trim_matches(|c: char| !c.is_alphanumeric());
             if !clean.is_empty() && !words.contains(&clean.to_string()) {
                 words.push(clean.to_string());
+                if words.len() >= 25 {
+                    break;
+                }
             }
         }
         // 2. Also register individual letters in order of appearance
