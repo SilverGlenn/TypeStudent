@@ -37,6 +37,15 @@ struct PiperConfig {
     espeak_data_path: Option<PathBuf>,
 }
 
+fn strip_unc(p: PathBuf) -> PathBuf {
+    let s = p.to_string_lossy();
+    if s.starts_with(r"\\?\") {
+        PathBuf::from(&s[4..])
+    } else {
+        p
+    }
+}
+
 impl PiperConfig {
     fn detect() -> Option<Self> {
         let bin_candidates = [
@@ -52,9 +61,23 @@ impl PiperConfig {
             PathBuf::from("assets/piper/espeak-ng-data"),
         ];
 
-        let bin = bin_candidates.into_iter().find(|p| p.exists())?;
-        let model = model_candidates.into_iter().find(|p| p.exists())?;
-        let espeak = espeak_candidates.into_iter().find(|p| p.exists());
+        let bin = bin_candidates
+            .into_iter()
+            .find(|p| p.exists())
+            .and_then(|p| p.canonicalize().ok())
+            .map(strip_unc)?;
+
+        let model = model_candidates
+            .into_iter()
+            .find(|p| p.exists())
+            .and_then(|p| p.canonicalize().ok())
+            .map(strip_unc)?;
+
+        let espeak = espeak_candidates
+            .into_iter()
+            .find(|p| p.exists())
+            .and_then(|p| p.canonicalize().ok())
+            .map(strip_unc);
 
         Some(Self {
             bin_path: bin,
