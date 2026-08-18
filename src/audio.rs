@@ -574,82 +574,130 @@ impl AudioEngine {
     }
 }
 
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+
+enum AudioMsg {
+    Play(SoundEffect),
+    SpeakLetter(char),
+    SpeakWord(String),
+    SpeakText(String, bool),
+    PrecacheText(String),
+    StopSpeech,
+    SetVolume(f32),
+    SetEnabled(bool),
+    SetVoiceEnabled(bool),
+}
+
 #[derive(Clone)]
-pub struct SharedAudio(Arc<Mutex<AudioEngine>>);
+pub struct SharedAudio {
+    sender: Sender<AudioMsg>,
+    enabled: Arc<AtomicBool>,
+    voice_enabled: Arc<AtomicBool>,
+    volume_bits: Arc<AtomicU32>,
+}
 
 impl SharedAudio {
     pub fn new() -> Self {
-        Self(Arc::new(Mutex::new(AudioEngine::new())))
+        let (sender, receiver) = mpsc::channel::<AudioMsg>();
+        let enabled = Arc::new(AtomicBool::new(true));
+        let voice_enabled = Arc::new(AtomicBool::new(true));
+        let volume_bits = Arc::new(AtomicU32::new(0.7f32.to_bits()));
+
+        // Spawn dedicated Audio Actor Thread that manages the audio hardware & sinks
+        thread::Builder::new()
+            .name("type-student-audio-actor".into())
+            .spawn(move || {
+                let mut engine = AudioEngine::new();
+                while let Ok(msg) = receiver.recv() {
+                    match msg {
+                        AudioMsg::Play(effect) => engine.play(effect),
+                        AudioMsg::SpeakLetter(c) => engine.speak_letter(c),
+                        AudioMsg::SpeakWord(w) => engine.speak_word(&w),
+                        AudioMsg::SpeakText(text, interrupt) => engine.speak_text(&text, interrupt),
+                        AudioMsg::PrecacheText(text) => engine.precache_text(&text),
+                        AudioMsg::StopSpeech => engine.stop_speech(),
+                        AudioMsg::SetVolume(vol) => engine.set_volume(vol),
+                        AudioMsg::SetEnabled(en) => engine.set_enabled(en),
+                        AudioMsg::SetVoiceEnabled(v_en) => engine.set_voice_enabled(v_en),
+                    }
+                }
+            })
+            .expect("failed to spawn audio actor thread");
+
+        Self {
+            sender,
+            enabled,
+            voice_enabled,
+            volume_bits,
+        }
     }
 
+    #[inline]
     pub fn play(&self, effect: SoundEffect) {
-        if let Ok(audio) = self.0.lock() {
-            audio.play(effect);
+        if self.enabled.load(Ordering::Relaxed) {
+            let _ = self.sender.send(AudioMsg::Play(effect));
         }
     }
 
+    #[inline]
     pub fn precache_text(&self, text: &str) {
-        if let Ok(audio) = self.0.lock() {
-            audio.precache_text(text);
+        if self.enabled.load(Ordering::Relaxed) && self.voice_enabled.load(Ordering::Relaxed) {
+            let _ = self.sender.send(AudioMsg::PrecacheText(text.to_string()));
         }
     }
 
+    #[inline]
     pub fn speak_letter(&self, c: char) {
-        if let Ok(audio) = self.0.lock() {
-            audio.speak_letter(c);
+        if self.enabled.load(Ordering::Relaxed) && self.voice_enabled.load(Ordering::Relaxed) {
+            let _ = self.sender.send(AudioMsg::SpeakLetter(c));
         }
     }
 
+    #[inline]
     pub fn speak_word(&self, word: &str) {
-        if let Ok(audio) = self.0.lock() {
-            audio.speak_word(word);
+        if self.enabled.load(Ordering::Relaxed) && self.voice_enabled.load(Ordering::Relaxed) && !word.is_empty() {
+            let _ = self.sender.send(AudioMsg::SpeakWord(word.to_string()));
         }
     }
 
+    #[inline]
     pub fn speak_text(&self, text: &str, interrupt: bool) {
-        if let Ok(audio) = self.0.lock() {
-            audio.speak_text(text, interrupt);
+        if self.enabled.load(Ordering::Relaxed) && self.voice_enabled.load(Ordering::Relaxed) && !text.is_empty() {
+            let _ = self.sender.send(AudioMsg::SpeakText(text.to_string(), interrupt));
         }
     }
 
+    #[inline]
     pub fn stop_speech(&self) {
-        if let Ok(audio) = self.0.lock() {
-            audio.stop_speech();
-        }
+        let _ = self.sender.send(AudioMsg::StopSpeech);
     }
 
     pub fn set_enabled(&self, enabled: bool) {
-        if let Ok(mut audio) = self.0.lock() {
-            audio.set_enabled(enabled);
-        }
+        self.enabled.store(enabled, Ordering::Relaxed);
+        let _ = self.sender.send(AudioMsg::SetEnabled(enabled));
     }
 
     pub fn set_voice_enabled(&self, enabled: bool) {
-        if let Ok(mut audio) = self.0.lock() {
-            audio.set_voice_enabled(enabled);
-        }
+        self.voice_enabled.store(enabled, Ordering::Relaxed);
+        let _ = self.sender.send(AudioMsg::SetVoiceEnabled(enabled));
     }
 
+    #[inline]
     pub fn is_voice_enabled(&self) -> bool {
-        if let Ok(audio) = self.0.lock() {
-            audio.is_voice_enabled()
-        } else {
-            false
-        }
+        self.voice_enabled.load(Ordering::Relaxed)
     }
 
     pub fn toggle_voice(&self) -> bool {
-        if let Ok(mut audio) = self.0.lock() {
-            audio.toggle_voice()
-        } else {
-            false
-        }
+        let current = self.voice_enabled.load(Ordering::Relaxed);
+        let new_state = !current;
+        self.voice_enabled.store(new_state, Ordering::Relaxed);
+        let _ = self.sender.send(AudioMsg::SetVoiceEnabled(new_state));
+        new_state
     }
 
     pub fn set_volume(&self, volume: f32) {
-        if let Ok(mut audio) = self.0.lock() {
-            audio.set_volume(volume);
-        }
+        self.volume_bits.store(volume.to_bits(), Ordering::Relaxed);
+        let _ = self.sender.send(AudioMsg::SetVolume(volume));
     }
 }
 
