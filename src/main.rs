@@ -5,7 +5,7 @@ use gpui::*;
 
 fn main() {
     Application::new().run(|cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(1240.0), px(820.0)), cx);
+        let bounds = Bounds::centered(None, size(px(1280.0), px(880.0)), cx);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: Some(TitlebarOptions {
