@@ -138,46 +138,61 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
                 .text_size(px(24.0))
                 .font_weight(FontWeight::MEDIUM)
                 .line_height(px(36.0))
-                .children(session.target_chars.iter().enumerate().map(|(idx, &ch)| {
-                    let status = session.char_statuses[idx];
-                    let is_cursor = idx == session.cursor_idx;
-                    let is_space = ch == ' ';
-
-                    let (text_color, bg_color) = match status {
-                        CharStatus::Correct => {
-                            if is_space {
-                                (rgb(0x86efac), rgb(0xf0fdf4))
-                            } else {
-                                (rgb(0x15803d), rgb(0xdcfce7))
-                            }
-                        }
-                        CharStatus::Incorrect(_) => (rgb(0xb91c1c), rgb(0xfee2e2)),
-                        CharStatus::Pending => {
-                            if is_cursor {
-                                (rgb(0xffffff), rgb(0x0284c7))
-                            } else if is_space {
-                                (rgb(0xcbd5e1), rgb(0xffffff)) // Faint, subtle space marker
-                            } else {
-                                (rgb(0x334155), rgb(0xffffff))
-                            }
-                        }
+                .children({
+                    let total_chars = session.target_chars.len();
+                    // If text is long (e.g. Story Studio passages), render a sliding viewport around the active typing point
+                    let (start_idx, end_idx) = if total_chars > 120 {
+                        let s = session.cursor_idx.saturating_sub(30);
+                        let e = (s + 110).min(total_chars);
+                        let s = if e - s < 110 { total_chars.saturating_sub(110) } else { s };
+                        (s, e)
+                    } else {
+                        (0, total_chars)
                     };
 
-                    let el = div()
-                        .px_1p5()
-                        .py_0p5()
-                        .rounded_md()
-                        .bg(bg_color)
-                        .text_color(text_color)
-                        .border_b_2()
-                        .border_color(if is_cursor { rgb(0x0369a1) } else { rgb(0xffffff) });
+                    let visible_slice = session.target_chars[start_idx..end_idx].iter().enumerate();
+                    visible_slice.map(move |(offset, &ch)| {
+                        let idx = start_idx + offset;
+                        let status = session.char_statuses[idx];
+                        let is_cursor = idx == session.cursor_idx;
+                        let is_space = ch == ' ';
 
-                    if is_space {
-                        el.child("␣")
-                    } else {
-                        el.child(ch.to_string())
-                    }
-                })),
+                        let (text_color, bg_color) = match status {
+                            CharStatus::Correct => {
+                                if is_space {
+                                    (rgb(0x86efac), rgb(0xf0fdf4))
+                                } else {
+                                    (rgb(0x15803d), rgb(0xdcfce7))
+                                }
+                            }
+                            CharStatus::Incorrect(_) => (rgb(0xb91c1c), rgb(0xfee2e2)),
+                            CharStatus::Pending => {
+                                if is_cursor {
+                                    (rgb(0xffffff), rgb(0x0284c7))
+                                } else if is_space {
+                                    (rgb(0xcbd5e1), rgb(0xffffff)) // Faint, subtle space marker
+                                } else {
+                                    (rgb(0x334155), rgb(0xffffff))
+                                }
+                            }
+                        };
+
+                        let el = div()
+                            .px_1p5()
+                            .py_0p5()
+                            .rounded_md()
+                            .bg(bg_color)
+                            .text_color(text_color)
+                            .border_b_2()
+                            .border_color(if is_cursor { rgb(0x0369a1) } else { rgb(0xffffff) });
+
+                        if is_space {
+                            el.child("␣")
+                        } else {
+                            el.child(ch.to_string())
+                        }
+                    })
+                })
         )
         // Friendly Keyboard & Hands Console (Ages 3-16)
         .child(

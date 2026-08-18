@@ -34,6 +34,7 @@ enum SpeechTask {
 struct PiperConfig {
     bin_path: PathBuf,
     model_path: PathBuf,
+    espeak_data_path: Option<PathBuf>,
 }
 
 impl PiperConfig {
@@ -46,13 +47,19 @@ impl PiperConfig {
         let model_candidates = [
             PathBuf::from("assets/piper/models/en_US-amy-medium.onnx"),
         ];
+        let espeak_candidates = [
+            PathBuf::from("assets/piper/bin/espeak-ng-data"),
+            PathBuf::from("assets/piper/espeak-ng-data"),
+        ];
 
         let bin = bin_candidates.into_iter().find(|p| p.exists())?;
         let model = model_candidates.into_iter().find(|p| p.exists())?;
+        let espeak = espeak_candidates.into_iter().find(|p| p.exists());
 
         Some(Self {
             bin_path: bin,
             model_path: model,
+            espeak_data_path: espeak,
         })
     }
 
@@ -71,8 +78,13 @@ impl PiperConfig {
             .arg("0.75")
             .arg("--noise_w")
             .arg("0.85")
-            .arg("-q")
-            .stdin(Stdio::piped())
+            .arg("-q");
+
+        if let Some(espeak) = &self.espeak_data_path {
+            cmd.arg("--espeak_data").arg(espeak);
+        }
+
+        cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
 
@@ -109,10 +121,7 @@ struct TtsWorker {
 }
 
 impl TtsWorker {
-    fn new(
-        _stream_handle_opt: Option<OutputStreamHandle>,
-        speech_sink: Arc<Mutex<Option<Sink>>>,
-    ) -> Option<Self> {
+    fn new(stream_handle_opt: Option<OutputStreamHandle>) -> Option<Self> {
         let (task_sender, task_receiver) = mpsc::channel::<SpeechTask>();
         let sample_cache = Arc::new(Mutex::new(HashMap::<String, Vec<f32>>::new()));
         let precache_queue = Arc::new((Mutex::new(VecDeque::<String>::new()), Condvar::new()));
@@ -149,7 +158,7 @@ impl TtsWorker {
                                     let mut cache = sample_cache.lock().unwrap();
                                     cache.insert(key, samples);
                                 }
-                                thread::sleep(std::time::Duration::from_millis(20));
+                                thread::sleep(std::time::Duration::from_millis(15));
                             }
                         }
                     }
@@ -161,11 +170,11 @@ impl TtsWorker {
         {
             let sample_cache = Arc::clone(&sample_cache);
             let piper_opt = Arc::clone(&piper_opt);
-            let speech_sink_clone = Arc::clone(&speech_sink);
 
             thread::Builder::new()
                 .name("type-student-speech".into())
                 .spawn(move || {
+                    let mut speech_sink = stream_handle_opt.as_ref().and_then(|h| Sink::try_new(h).ok());
                     let mut os_tts = {
                         let mut t = tts::Tts::default().ok();
                         if let Some(tts_engine) = &mut t {
@@ -217,25 +226,21 @@ impl TtsWorker {
                                 });
 
                                 if let Some(samples) = samples_opt {
-                                    if let Ok(mut sink_guard) = speech_sink_clone.lock() {
-                                        if let Some(sink) = sink_guard.as_mut() {
-                                            if interrupt {
-                                                sink.clear();
-                                            }
-                                            let source = rodio::buffer::SamplesBuffer::new(1, 22050, samples);
-                                            sink.set_volume(0.95);
-                                            sink.append(source);
+                                    if let Some(sink) = speech_sink.as_mut() {
+                                        if interrupt {
+                                            sink.clear();
                                         }
+                                        let source = rodio::buffer::SamplesBuffer::new(1, 22050, samples);
+                                        sink.set_volume(0.95);
+                                        sink.append(source);
                                     }
                                 } else if let Some(tts_engine) = &mut os_tts {
                                     let _ = tts_engine.speak(&text, interrupt);
                                 }
                             }
                             SpeechTask::Stop => {
-                                if let Ok(mut sink_guard) = speech_sink_clone.lock() {
-                                    if let Some(sink) = sink_guard.as_mut() {
-                                        sink.clear();
-                                    }
+                                if let Some(sink) = speech_sink.as_mut() {
+                                    sink.clear();
                                 }
                                 if let Some(tts_engine) = &mut os_tts {
                                     let _ = tts_engine.stop();
@@ -461,11 +466,8 @@ impl AudioEngine {
         let sfx_sink = Arc::new(Mutex::new(
             stream_handle.as_ref().and_then(|h| Sink::try_new(h).ok()),
         ));
-        let speech_sink = Arc::new(Mutex::new(
-            stream_handle.as_ref().and_then(|h| Sink::try_new(h).ok()),
-        ));
 
-        let tts = TtsWorker::new(stream_handle, Arc::clone(&speech_sink));
+        let tts = TtsWorker::new(stream_handle);
 
         Self {
             _stream: stream,
