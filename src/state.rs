@@ -64,6 +64,9 @@ pub struct AppState {
     // UI state
     pub is_sidebar_open: bool,
     pub is_pre_activity: bool,
+    pub pre_activity_keys: Vec<char>,
+    pub pre_activity_tested: Vec<bool>,
+    pub pre_activity_countdown: Option<u32>,
 }
 
 impl AppState {
@@ -89,6 +92,9 @@ impl AppState {
             review_custom_text: None,
             is_sidebar_open: true,
             is_pre_activity: false,
+            pre_activity_keys: Vec::new(),
+            pre_activity_tested: Vec::new(),
+            pre_activity_countdown: None,
         };
 
         // Apply audio settings from active profile
@@ -104,8 +110,39 @@ impl AppState {
         self.is_sidebar_open = !self.is_sidebar_open;
     }
 
+    pub fn init_pre_activity_keys(&mut self, new_keys: &[char], text: &str) {
+        let mut keys = Vec::new();
+        if !new_keys.is_empty() {
+            keys.extend_from_slice(new_keys);
+        } else {
+            for c in text.chars() {
+                if c.is_alphanumeric() {
+                    let lower = c.to_ascii_lowercase();
+                    if !keys.contains(&lower) {
+                        keys.push(lower);
+                        if keys.len() >= 4 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if keys.is_empty() {
+            keys = vec!['f', 'j', 'd', 'k'];
+        }
+        let len = keys.len();
+        self.pre_activity_keys = keys;
+        self.pre_activity_tested = vec![false; len];
+        self.pre_activity_countdown = None;
+    }
+
+    pub fn start_countdown(&mut self) {
+        self.pre_activity_countdown = Some(3);
+    }
+
     pub fn begin_live_activity(&mut self) {
         self.is_pre_activity = false;
+        self.pre_activity_countdown = None;
         if let Some(session) = &mut self.typing_session {
             session.start_time = None; // Reset timer so it starts with first actual keystroke
         }
@@ -117,6 +154,7 @@ impl AppState {
             self.current_exercise_idx = exercise_idx;
             let ex = self.lessons[lesson_idx].exercises[exercise_idx].clone();
             self.typing_session = Some(TypingSession::new(&ex.text));
+            self.init_pre_activity_keys(&ex.new_keys, &ex.text);
             self.current_exercise_info = Some(ex);
             self.active_view = ActiveView::TypingArena;
             self.is_sidebar_open = false;
@@ -127,6 +165,7 @@ impl AppState {
     pub fn start_typing_test(&mut self, title: &str, text: &str, duration_secs: u32) {
         let session = TypingSession::with_time_limit(text, Duration::from_secs(duration_secs as u64));
         self.typing_session = Some(session);
+        self.init_pre_activity_keys(&[], text);
         self.current_exercise_info = Some(Exercise {
             id: "test".to_string(),
             title: title.to_string(),
@@ -142,6 +181,7 @@ impl AppState {
 
     pub fn start_smart_review(&mut self, drill_text: &str) {
         self.typing_session = Some(TypingSession::new(drill_text));
+        self.init_pre_activity_keys(&[], drill_text);
         self.current_exercise_info = Some(Exercise {
             id: "smart_review".to_string(),
             title: "Smart Review Drill".to_string(),
@@ -157,6 +197,7 @@ impl AppState {
 
     pub fn start_story_practice(&mut self, title: &str, story_text: &str) {
         self.typing_session = Some(TypingSession::new(story_text));
+        self.init_pre_activity_keys(&[], story_text);
         self.current_exercise_info = Some(Exercise {
             id: "story_practice".to_string(),
             title: title.to_string(),
@@ -174,10 +215,35 @@ impl AppState {
         match self.active_view {
             ActiveView::TypingArena => {
                 if self.is_pre_activity {
-                    self.begin_live_activity();
-                    if c == ' ' || c == '\n' {
+                    if self.pre_activity_countdown.is_some() {
+                        return; // Countdown is running
+                    }
+
+                    let lower = c.to_ascii_lowercase();
+                    let mut matched = false;
+
+                    for (idx, &target) in self.pre_activity_keys.iter().enumerate() {
+                        if target == lower && !self.pre_activity_tested[idx] {
+                            self.pre_activity_tested[idx] = true;
+                            self.audio.play(SoundEffect::KeyClick);
+                            matched = true;
+                            break;
+                        }
+                    }
+
+                    if !matched && (c == ' ' || c == '\n') {
+                        // User pressed space/enter to jump into countdown
+                        self.start_countdown();
+                        self.audio.play(SoundEffect::ExerciseSuccess);
                         return;
                     }
+
+                    // If all keys are now verified, start 3s countdown automatically
+                    if self.pre_activity_tested.iter().all(|&t| t) {
+                        self.start_countdown();
+                        self.audio.play(SoundEffect::ExerciseSuccess);
+                    }
+                    return;
                 }
 
                 if let Some(session) = &mut self.typing_session {

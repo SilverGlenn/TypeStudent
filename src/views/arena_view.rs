@@ -13,11 +13,10 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
     let info = view.state.current_exercise_info.as_ref();
     let title = info.map(|i| i.title.clone()).unwrap_or_else(|| "Exercise".to_string());
     let instruction = info.map(|i| i.instruction.clone()).unwrap_or_default();
-    let new_keys = info.map(|i| i.new_keys.clone()).unwrap_or_default();
 
-    // 1. Pre-Activity Intro Card (Clean & uncluttered before typing starts)
+    // 1. Pre-Activity Warm-Up & Countdown Screen
     if view.state.is_pre_activity {
-        return render_pre_activity_screen(&title, &instruction, &new_keys, cx);
+        return render_pre_activity_screen(view, &title, &instruction, cx);
     }
 
     // 2. Live Typing Screen (Minimal HUD, No cluttered banners, spacious)
@@ -74,7 +73,7 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
                             if errors > 0 { rgb(0xfef2f2) } else { rgb(0xf8fafc) },
                             if errors > 0 { rgb(0xfecaca) } else { rgb(0xe2e8f0) },
                         ))
-                        // Quick Exit / Menu button in top right
+                        // Quick Exit button
                         .child(
                             div()
                                 .id("btn_exit_arena")
@@ -179,13 +178,68 @@ pub fn render_typing_arena(view: &TypeStudentView, cx: &mut Context<TypeStudentV
 }
 
 fn render_pre_activity_screen(
+    view: &TypeStudentView,
     title: &str,
     instruction: &str,
-    new_keys: &[char],
     cx: &mut Context<TypeStudentView>,
 ) -> AnyElement {
     let title_copy = title.to_string();
     let instruction_copy = instruction.to_string();
+
+    // 1. If 3-Second Countdown is active
+    if let Some(countdown) = view.state.pre_activity_countdown {
+        let (num_display, msg) = match countdown {
+            3 => ("3", "Hands on Home Row!"),
+            2 => ("2", "Get Ready!"),
+            1 => ("1", "Start Typing!"),
+            _ => ("Go!", "Go!"),
+        };
+
+        return div()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap_6()
+            .p_12()
+            .size_full()
+            .rounded_2xl()
+            .bg(rgb(0xffffff))
+            .border_1()
+            .border_color(rgb(0xe2e8f0))
+            .child(
+                div()
+                    .w(px(140.0))
+                    .h(px(140.0))
+                    .rounded_full()
+                    .bg(rgb(0xe0f2fe))
+                    .border_4()
+                    .border_color(rgb(0x0284c7))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        div()
+                            .text_size(px(64.0))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(rgb(0x0284c7))
+                            .child(num_display),
+                    ),
+            )
+            .child(
+                div()
+                    .text_size(px(24.0))
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(rgb(0x0f172a))
+                    .child(msg),
+            )
+            .into_any_element();
+    }
+
+    // 2. Interactive Key Warm-Up / Test Area
+    let keys = &view.state.pre_activity_keys;
+    let tested = &view.state.pre_activity_tested;
+    let all_tested = !tested.is_empty() && tested.iter().all(|&t| t);
 
     div()
         .flex()
@@ -204,7 +258,7 @@ fn render_pre_activity_screen(
                 .flex_col()
                 .items_center()
                 .gap_2()
-                .child(div().text_size(px(44.0)).child("🎯"))
+                .child(div().text_size(px(40.0)).child("🖐️"))
                 .child(
                     div()
                         .text_size(px(22.0))
@@ -217,48 +271,66 @@ fn render_pre_activity_screen(
                         .text_size(px(14.0))
                         .text_color(rgb(0x475569))
                         .child(if instruction_copy.is_empty() {
-                            "Place your fingers on Home Row (ASDF - JKL;) and get ready!".to_string()
+                            "Test each key on your keyboard to warm up before typing:".to_string()
                         } else {
                             instruction_copy
                         }),
                 ),
         )
-        .children(if !new_keys.is_empty() {
-            Some(
-                div()
-                    .flex()
-                    .flex_col()
-                    .items_center()
-                    .gap_2()
-                    .child(
-                        div()
-                            .text_size(px(12.0))
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(rgb(0x64748b))
-                            .child("TARGET KEYS IN THIS DRILL:"),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap_2()
-                            .children(new_keys.iter().map(|c| {
-                                div()
-                                    .px_3p5()
-                                    .py_2()
-                                    .rounded_xl()
-                                    .bg(rgb(0xe0f2fe))
-                                    .border_1()
-                                    .border_color(rgb(0xbae6fd))
-                                    .text_size(px(18.0))
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(rgb(0x0369a1))
-                                    .child(c.to_uppercase().to_string())
-                            })),
-                    ),
-            )
-        } else {
-            None
-        })
+        // Interactive Key Test Cards
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap_3()
+                .child(
+                    div()
+                        .text_size(px(13.0))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgb(0x64748b))
+                        .child("STRIKE EACH KEY ON YOUR KEYBOARD TO TEST:"),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .gap_3()
+                        .children(keys.iter().enumerate().map(|(idx, &c)| {
+                            let is_done = tested.get(idx).copied().unwrap_or(false);
+
+                            let bg_color = if is_done { rgb(0xdcfce7) } else { rgb(0xf0f9ff) };
+                            let border_color = if is_done { rgb(0x86efac) } else { rgb(0x38bdf8) };
+                            let text_color = if is_done { rgb(0x15803d) } else { rgb(0x0284c7) };
+
+                            div()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .px_5()
+                                .py_3()
+                                .rounded_2xl()
+                                .bg(bg_color)
+                                .border_2()
+                                .border_color(border_color)
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_size(px(24.0))
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(text_color)
+                                        .child(c.to_uppercase().to_string()),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(11.0))
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(text_color)
+                                        .child(if is_done { "✓ Tested" } else { "Press Key" }),
+                                )
+                        })),
+                ),
+        )
+        // Action Buttons
         .child(
             div()
                 .flex()
@@ -271,8 +343,8 @@ fn render_pre_activity_screen(
                         .px_8()
                         .py_3p5()
                         .rounded_xl()
-                        .bg(rgb(0x0284c7))
-                        .text_size(px(16.0))
+                        .bg(if all_tested { rgb(0x16a34a) } else { rgb(0x0284c7) })
+                        .text_size(px(15.0))
                         .font_weight(FontWeight::BOLD)
                         .text_color(rgb(0xffffff))
                         .cursor_pointer()
@@ -280,11 +352,14 @@ fn render_pre_activity_screen(
                         .on_mouse_down(
                             MouseButton::Left,
                             cx.listener(|this, _event: &MouseDownEvent, _window, cx| {
-                                this.state.begin_live_activity();
-                                cx.notify();
+                                this.start_pre_activity_countdown(cx);
                             }),
                         )
-                        .child("Start Activity (Press Space) ▶"),
+                        .child(if all_tested {
+                            "All Keys Tested! Start (Press Space) ▶"
+                        } else {
+                            "Start Activity (or Press Space) ▶"
+                        }),
                 )
                 .child(
                     div()

@@ -15,11 +15,135 @@
         "show_keyboard": true,
         "target_wpm": 35
       },
-      "key_stats": {},
-      "lesson_records": {},
+      "key_stats": {
+        "p": {
+          "hits": 2,
+          "misses": 0,
+          "total_latency_ms": 1334
+        },
+        "f": {
+          "hits": 10,
+          "misses": 0,
+          "total_latency_ms": 3073
+        },
+        "k": {
+          "hits": 9,
+          "misses": 0,
+          "total_latency_ms": 3678
+        },
+        "i": {
+          "hits": 5,
+          "misses": 0,
+          "total_latency_ms": 879
+        },
+        "s": {
+          "hits": 11,
+          "misses": 0,
+          "total_latency_ms": 1945
+        },
+        " ": {
+          "hits": 22,
+          "misses": 1,
+          "total_latency_ms": 6702
+        },
+        "e": {
+          "hits": 6,
+          "misses": 0,
+          "total_latency_ms": 775
+        },
+        "y": {
+          "hits": 1,
+          "misses": 0,
+          "total_latency_ms": 81
+        },
+        "r": {
+          "hits": 2,
+          "misses": 0,
+          "total_latency_ms": 301
+        },
+        "g": {
+          "hits": 1,
+          "misses": 1,
+          "total_latency_ms": 110
+        },
+        "d": {
+          "hits": 9,
+          "misses": 0,
+          "total_latency_ms": 2457
+        },
+        "u": {
+          "hits": 1,
+          "misses": 0,
+          "total_latency_ms": 135
+        },
+        "j": {
+          "hits": 8,
+          "misses": 0,
+          "total_latency_ms": 4451
+        },
+        "n": {
+          "hits": 3,
+          "misses": 0,
+          "total_latency_ms": 1155
+        },
+        "l": {
+          "hits": 9,
+          "misses": 0,
+          "total_latency_ms": 2091
+        },
+        "h": {
+          "hits": 2,
+          "misses": 1,
+          "total_latency_ms": 272
+        },
+        "a": {
+          "hits": 14,
+          "misses": 2,
+          "total_latency_ms": 4531
+        },
+        ";": {
+          "hits": 8,
+          "misses": 0,
+          "total_latency_ms": 4016
+        },
+        "w": {
+          "hits": 1,
+          "misses": 0,
+          "total_latency_ms": 202
+        },
+        "c": {
+          "hits": 4,
+          "misses": 0,
+          "total_latency_ms": 575
+        },
+        "t": {
+          "hits": 6,
+          "misses": 0,
+          "total_latency_ms": 1100
+        }
+      },
+      "lesson_records": {
+        "lesson_1/smart_review": {
+          "stars": 3,
+          "best_wpm": 42.424484,
+          "best_accuracy": 94.82758,
+          "completed_at": "2026-08-18 16:31"
+        },
+        "lesson_1/1_1": {
+          "stars": 4,
+          "best_wpm": 32.577583,
+          "best_accuracy": 97.5,
+          "completed_at": "2026-08-18 16:34"
+        }
+      },
       "test_history": [],
       "game_high_scores": {},
-      "unlocked_trophies": {}
+      "unlocked_trophies": {
+        "first_steps": "2026-08-18 16:30",
+        "speed_novice": "2026-08-18 16:30",
+        "speed_racer": "2026-08-18 16:31",
+        "home_row_hero": "2026-08-18 16:31"
+      }
     }
   ]
 }

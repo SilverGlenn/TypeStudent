@@ -73,6 +73,51 @@ impl TypeStudentView {
             _ => None,
         }
     }
+
+    pub fn start_pre_activity_countdown(&mut self, cx: &mut Context<Self>) {
+        if self.state.pre_activity_countdown.is_some() {
+            return;
+        }
+        self.state.start_countdown();
+        self.state.audio.play(crate::audio::SoundEffect::ExerciseSuccess);
+        cx.notify();
+
+        let weak_entity = cx.entity().downgrade();
+        let async_cx = cx.to_async();
+
+        cx.foreground_executor().spawn(async move {
+            for _ in 0..3 {
+                async_cx.background_executor().timer(std::time::Duration::from_millis(900)).await;
+                let is_finished = async_cx.update(|cx| {
+                    if let Some(view) = weak_entity.upgrade() {
+                        view.update(cx, |this, cx| {
+                            if let Some(cnt) = &mut this.state.pre_activity_countdown {
+                                if *cnt > 1 {
+                                    *cnt -= 1;
+                                    this.state.audio.play(crate::audio::SoundEffect::KeyClick);
+                                    cx.notify();
+                                    false
+                                } else {
+                                    this.state.begin_live_activity();
+                                    this.state.audio.play(crate::audio::SoundEffect::ExerciseSuccess);
+                                    cx.notify();
+                                    true
+                                }
+                            } else {
+                                true
+                            }
+                        })
+                    } else {
+                        true
+                    }
+                }).unwrap_or(true);
+
+                if is_finished {
+                    break;
+                }
+            }
+        }).detach();
+    }
 }
 
 impl Render for TypeStudentView {
@@ -102,7 +147,12 @@ impl Render for TypeStudentView {
                     if ch == '\x08' {
                         this.state.on_backspace();
                     } else {
+                        let was_counting = this.state.pre_activity_countdown.is_some();
                         this.state.on_keystroke(ch);
+                        if !was_counting && this.state.pre_activity_countdown.is_some() {
+                            this.state.pre_activity_countdown = None; // Reset so helper starts clean async task
+                            this.start_pre_activity_countdown(cx);
+                        }
                     }
                     cx.notify();
                 }
