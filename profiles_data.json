@@ -16,110 +16,110 @@
         "target_wpm": 35
       },
       "key_stats": {
-        "p": {
-          "hits": 2,
-          "misses": 0,
-          "total_latency_ms": 1334
-        },
-        "f": {
-          "hits": 10,
-          "misses": 0,
-          "total_latency_ms": 3073
-        },
-        "k": {
-          "hits": 9,
-          "misses": 0,
-          "total_latency_ms": 3678
-        },
-        "i": {
-          "hits": 5,
-          "misses": 0,
-          "total_latency_ms": 879
-        },
-        "s": {
-          "hits": 11,
-          "misses": 0,
-          "total_latency_ms": 1945
-        },
-        " ": {
-          "hits": 22,
-          "misses": 1,
-          "total_latency_ms": 6702
-        },
-        "e": {
-          "hits": 6,
-          "misses": 0,
-          "total_latency_ms": 775
-        },
         "y": {
           "hits": 1,
           "misses": 0,
           "total_latency_ms": 81
-        },
-        "r": {
-          "hits": 2,
-          "misses": 0,
-          "total_latency_ms": 301
-        },
-        "g": {
-          "hits": 1,
-          "misses": 1,
-          "total_latency_ms": 110
-        },
-        "d": {
-          "hits": 9,
-          "misses": 0,
-          "total_latency_ms": 2457
-        },
-        "u": {
-          "hits": 1,
-          "misses": 0,
-          "total_latency_ms": 135
-        },
-        "j": {
-          "hits": 8,
-          "misses": 0,
-          "total_latency_ms": 4451
         },
         "n": {
           "hits": 3,
           "misses": 0,
           "total_latency_ms": 1155
         },
-        "l": {
-          "hits": 9,
-          "misses": 0,
-          "total_latency_ms": 2091
-        },
         "h": {
           "hits": 2,
           "misses": 1,
           "total_latency_ms": 272
         },
-        "a": {
-          "hits": 14,
-          "misses": 2,
-          "total_latency_ms": 4531
-        },
-        ";": {
-          "hits": 8,
+        "p": {
+          "hits": 2,
           "misses": 0,
-          "total_latency_ms": 4016
+          "total_latency_ms": 1334
         },
-        "w": {
-          "hits": 1,
+        "s": {
+          "hits": 15,
           "misses": 0,
-          "total_latency_ms": 202
+          "total_latency_ms": 2881
         },
         "c": {
           "hits": 4,
           "misses": 0,
           "total_latency_ms": 575
         },
+        "l": {
+          "hits": 13,
+          "misses": 0,
+          "total_latency_ms": 3054
+        },
+        "a": {
+          "hits": 18,
+          "misses": 2,
+          "total_latency_ms": 5637
+        },
+        ";": {
+          "hits": 12,
+          "misses": 0,
+          "total_latency_ms": 6171
+        },
+        "w": {
+          "hits": 1,
+          "misses": 0,
+          "total_latency_ms": 202
+        },
+        "r": {
+          "hits": 2,
+          "misses": 0,
+          "total_latency_ms": 301
+        },
+        "f": {
+          "hits": 14,
+          "misses": 0,
+          "total_latency_ms": 3787
+        },
+        "e": {
+          "hits": 6,
+          "misses": 0,
+          "total_latency_ms": 775
+        },
+        "i": {
+          "hits": 5,
+          "misses": 0,
+          "total_latency_ms": 879
+        },
+        "u": {
+          "hits": 1,
+          "misses": 0,
+          "total_latency_ms": 135
+        },
         "t": {
           "hits": 6,
           "misses": 0,
           "total_latency_ms": 1100
+        },
+        "k": {
+          "hits": 13,
+          "misses": 0,
+          "total_latency_ms": 4891
+        },
+        "g": {
+          "hits": 1,
+          "misses": 1,
+          "total_latency_ms": 110
+        },
+        "j": {
+          "hits": 12,
+          "misses": 0,
+          "total_latency_ms": 6735
+        },
+        "d": {
+          "hits": 13,
+          "misses": 0,
+          "total_latency_ms": 3406
+        },
+        " ": {
+          "hits": 29,
+          "misses": 1,
+          "total_latency_ms": 9052
         }
       },
       "lesson_records": {
@@ -131,9 +131,9 @@
         },
         "lesson_1/1_1": {
           "stars": 4,
-          "best_wpm": 32.577583,
-          "best_accuracy": 97.5,
-          "completed_at": "2026-08-18 16:34"
+          "best_wpm": 36.880497,
+          "best_accuracy": 100.0,
+          "completed_at": "2026-08-18 16:50"
         }
       },
       "test_history": [],
@@ -142,6 +142,7 @@
         "first_steps": "2026-08-18 16:30",
         "speed_novice": "2026-08-18 16:30",
         "speed_racer": "2026-08-18 16:31",
+        "accuracy_ace": "2026-08-18 16:50",
         "home_row_hero": "2026-08-18 16:31"
       }
     }

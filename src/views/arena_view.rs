@@ -479,6 +479,23 @@ fn render_friendly_keyboard(active_char: Option<char>, _active_finger: Option<Fi
 }
 
 fn render_friendly_hands(hands: &HandsGuideModel) -> impl IntoElement {
+    let left_active_label = if hands.left_pinky.is_active { "Pinky" }
+    else if hands.left_ring.is_active { "Ring" }
+    else if hands.left_middle.is_active { "Middle" }
+    else if hands.left_index.is_active { "Index" }
+    else if hands.left_thumb.is_active { "Thumb" }
+    else { "Left Hand" };
+
+    let right_active_label = if hands.right_pinky.is_active { "Pinky" }
+    else if hands.right_ring.is_active { "Ring" }
+    else if hands.right_middle.is_active { "Middle" }
+    else if hands.right_index.is_active { "Index" }
+    else if hands.right_thumb.is_active { "Thumb" }
+    else { "Right Hand" };
+
+    let is_left_active = hands.left_pinky.is_active || hands.left_ring.is_active || hands.left_middle.is_active || hands.left_index.is_active || hands.left_thumb.is_active;
+    let is_right_active = hands.right_pinky.is_active || hands.right_ring.is_active || hands.right_middle.is_active || hands.right_index.is_active || hands.right_thumb.is_active;
+
     div()
         .flex()
         .justify_around()
@@ -489,86 +506,113 @@ fn render_friendly_hands(hands: &HandsGuideModel) -> impl IntoElement {
             // Left Hand
             div()
                 .flex()
-                .flex_col()
-                .items_center()
+                .items_end()
                 .child(
                     div()
                         .flex()
-                        .items_end()
-                        .gap_2()
-                        .child(render_friendly_finger(hands.left_pinky, hands.target_char))
-                        .child(render_friendly_finger(hands.left_ring, hands.target_char))
-                        .child(render_friendly_finger(hands.left_middle, hands.target_char))
-                        .child(render_friendly_finger(hands.left_index, hands.target_char))
-                        .child(render_friendly_finger(hands.left_thumb, hands.target_char)),
-                )
-                .child(
-                    div()
-                        .w(px(200.0))
-                        .h(px(38.0))
-                        .rounded_b_3xl()
-                        .bg(rgb(0xf1f5f9))
-                        .border_1()
-                        .border_color(rgb(0xcbd5e1))
-                        .flex()
+                        .flex_col()
                         .items_center()
-                        .justify_center()
                         .child(
                             div()
-                                .text_size(px(11.0))
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(rgb(0x64748b))
-                                .child("LEFT HAND"),
+                                .flex()
+                                .items_end()
+                                .gap_1()
+                                .child(render_friendly_finger(hands.left_pinky, hands.target_char, false))
+                                .child(render_friendly_finger(hands.left_ring, hands.target_char, false))
+                                .child(render_friendly_finger(hands.left_middle, hands.target_char, false))
+                                .child(render_friendly_finger(hands.left_index, hands.target_char, false)),
+                        )
+                        .child(
+                            div()
+                                .w(px(160.0))
+                                .h(px(110.0))
+                                .bg(rgb(0xffffff))
+                                .border_2()
+                                .border_color(if is_left_active { rgb(0x94a3b8) } else { rgb(0xcbd5e1) })
+                                .rounded_b_3xl()
+                                .rounded_t_sm()
+                                .mt_1()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .shadow_sm()
+                                .child(
+                                    div()
+                                        .text_size(px(15.0))
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(if is_left_active { rgb(0x0f172a) } else { rgb(0x94a3b8) })
+                                        .child(left_active_label),
+                                ),
                         ),
+                )
+                .child(
+                    // Left Thumb
+                    div()
+                        .mb_6()
+                        .ml_1()
+                        .child(render_friendly_finger(hands.left_thumb, hands.target_char, true)),
                 ),
         )
         .child(
             // Right Hand
             div()
                 .flex()
-                .flex_col()
-                .items_center()
+                .items_end()
                 .child(
+                    // Right Thumb
                     div()
-                        .flex()
-                        .items_end()
-                        .gap_2()
-                        .child(render_friendly_finger(hands.right_thumb, hands.target_char))
-                        .child(render_friendly_finger(hands.right_index, hands.target_char))
-                        .child(render_friendly_finger(hands.right_middle, hands.target_char))
-                        .child(render_friendly_finger(hands.right_ring, hands.target_char))
-                        .child(render_friendly_finger(hands.right_pinky, hands.target_char)),
+                        .mb_6()
+                        .mr_1()
+                        .child(render_friendly_finger(hands.right_thumb, hands.target_char, true)),
                 )
                 .child(
                     div()
-                        .w(px(200.0))
-                        .h(px(38.0))
-                        .rounded_b_3xl()
-                        .bg(rgb(0xf1f5f9))
-                        .border_1()
-                        .border_color(rgb(0xcbd5e1))
                         .flex()
+                        .flex_col()
                         .items_center()
-                        .justify_center()
                         .child(
                             div()
-                                .text_size(px(11.0))
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(rgb(0x64748b))
-                                .child("RIGHT HAND"),
+                                .flex()
+                                .items_end()
+                                .gap_1()
+                                .child(render_friendly_finger(hands.right_index, hands.target_char, false))
+                                .child(render_friendly_finger(hands.right_middle, hands.target_char, false))
+                                .child(render_friendly_finger(hands.right_ring, hands.target_char, false))
+                                .child(render_friendly_finger(hands.right_pinky, hands.target_char, false)),
+                        )
+                        .child(
+                            div()
+                                .w(px(160.0))
+                                .h(px(110.0))
+                                .bg(rgb(0xffffff))
+                                .border_2()
+                                .border_color(if is_right_active { rgb(0x94a3b8) } else { rgb(0xcbd5e1) })
+                                .rounded_b_3xl()
+                                .rounded_t_sm()
+                                .mt_1()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .shadow_sm()
+                                .child(
+                                    div()
+                                        .text_size(px(15.0))
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(if is_right_active { rgb(0x0f172a) } else { rgb(0x94a3b8) })
+                                        .child(right_active_label),
+                                ),
                         ),
                 ),
         )
 }
 
-fn render_friendly_finger(finger: HandFingerState, target_char: Option<char>) -> impl IntoElement {
-    let height = if finger.is_active { finger.active_height + 4.0 } else { finger.normal_height + 4.0 };
-    let width = finger.width + 4.0;
+fn render_friendly_finger(finger: HandFingerState, target_char: Option<char>, is_thumb: bool) -> impl IntoElement {
+    let height = if finger.is_active { finger.active_height } else { finger.normal_height };
+    let width = if is_thumb { finger.width + 8.0 } else { finger.width + 2.0 };
 
     let (f_r, f_g, f_b) = finger.finger.rgb();
     let finger_color = rgb((f_r as u32) << 16 | (f_g as u32) << 8 | (f_b as u32));
 
-    let bg_color = if finger.is_active { finger_color } else { rgb(0xf8fafc) };
     let border_color = if finger.is_active { rgb(0x0f172a) } else { rgb(0xcbd5e1) };
 
     let tip_label = if finger.is_active {
@@ -584,41 +628,34 @@ fn render_friendly_finger(finger: HandFingerState, target_char: Option<char>) ->
     div()
         .w(px(width))
         .h(px(height))
-        .rounded_t_2xl()
-        .bg(bg_color)
+        .rounded_t_full()
+        .bg(finger_color)
         .border_2()
         .border_color(border_color)
         .flex()
         .flex_col()
         .items_center()
-        .justify_between()
-        .py_1p5()
+        .justify_start()
+        .pt_2()
         // Resting / Target Keycap on Fingertip
         .child(
             div()
                 .w(px(24.0))
                 .h(px(24.0))
                 .rounded_full()
-                .bg(if finger.is_active { rgb(0xffffff) } else { rgb(0xe2e8f0) })
+                .bg(rgb(0xffffff))
                 .border_1()
                 .border_color(if finger.is_active { rgb(0x0f172a) } else { rgb(0x94a3b8) })
                 .flex()
                 .items_center()
                 .justify_center()
+                .shadow_sm()
                 .child(
                     div()
-                        .text_size(px(12.0))
+                        .text_size(px(13.0))
                         .font_weight(FontWeight::BOLD)
-                        .text_color(if finger.is_active { finger_color } else { rgb(0x1e293b) })
+                        .text_color(if finger.is_active { rgb(0x0f172a) } else { rgb(0x64748b) })
                         .child(tip_label),
                 ),
-        )
-        // Clear Finger Name Label
-        .child(
-            div()
-                .text_size(px(9.5))
-                .font_weight(FontWeight::BOLD)
-                .text_color(if finger.is_active { rgb(0xffffff) } else { rgb(0x475569) })
-                .child(finger.label),
         )
 }
